@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
       .map((item) => item.trim())
       .filter(Boolean);
 
-    const newsItems = await fetchNaverNews({ keywords, display: 7 });
+    const newsItems = await fetchNaverNews({ keywords, display: 7, refresh: Date.now() });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 

@@ -13,6 +13,18 @@ const defaultCategories = [
   { name: "문화 / 생활", keywords: ["관광", "소비트렌드"] }
 ];
 
+const architectureKeywords = [
+  "복합 프로그램",
+  "생활 인프라",
+  "반외부공간",
+  "도시재생",
+  "보행환경",
+  "도심 물류",
+  "공공공간",
+  "리노베이션",
+  "기후 대응"
+];
+
 function flattenKeywords(categories) {
   return categories.flatMap((category) => category.keywords).filter(Boolean);
 }
@@ -34,6 +46,7 @@ function App() {
   const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [newsItems, setNewsItems] = useState([]);
   const [updatedAt, setUpdatedAt] = useState("");
+  const [refreshCount, setRefreshCount] = useState(0);
 
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
 
@@ -53,16 +66,24 @@ function App() {
 
   const loadNews = async (nextCategories = categories) => {
     const nextKeywords = flattenKeywords(nextCategories);
+    const refresh = Date.now();
+
     setIsLoadingNews(true);
-    setStatus("분야별 관심 키워드로 최신 뉴스를 불러오는 중입니다...");
+    setStatus("최신 뉴스를 다시 불러오는 중입니다...");
+
     try {
       const query = encodeURIComponent(nextKeywords.join(","));
-      const response = await fetch(`/api/news?keywords=${query}`);
+      const response = await fetch(`/api/news?keywords=${query}&refresh=${refresh}`, {
+        cache: "no-store"
+      });
       const data = await response.json();
+
       if (!response.ok) throw new Error(data.error || "뉴스를 불러오지 못했습니다.");
+
       setNewsItems(data.newsItems || []);
       setUpdatedAt(data.updatedAt || "");
-      setStatus("분야별 관심 키워드가 적용되었습니다.");
+      setRefreshCount((count) => count + 1);
+      setStatus("최신 뉴스가 업데이트되었습니다. 새 기사가 없으면 목록이 이전과 같을 수 있습니다.");
     } catch (error) {
       setStatus(error.message || "뉴스 업데이트 중 오류가 발생했습니다.");
     } finally {
@@ -148,10 +169,12 @@ function App() {
           </p>
         </div>
         <div className="hero-card">
-          <span>현재 적용된 분야</span>
-          <strong>{categories.length}개</strong>
-          <p>각 분야별 키워드를 바꾸면 뉴스 목록과 메일 브리핑이 다시 업데이트됩니다.</p>
-          <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>{isLoadingNews ? "업데이트 중..." : "분야별 뉴스 업데이트"}</button>
+          <span>오늘 생성된 브리핑</span>
+          <strong>{newsItems.length || 0}개 뉴스</strong>
+          <p>관심 키워드 기반 최신 뉴스를 건축적 흐름으로 재분류합니다.</p>
+          <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>
+            {isLoadingNews ? "업데이트 중..." : "최신 뉴스 업데이트"}
+          </button>
         </div>
       </header>
 
@@ -201,8 +224,8 @@ function App() {
             <button className="mail-button" onClick={sendEmail} disabled={isSending}>{isSending ? "전송 중..." : "브리핑 메일 보내기"}</button>
             {status && <p className="notice">{status}</p>}
             <div className="small-info">
-              <strong>내일 아침 자동 메일 주의</strong>
-              <p>웹사이트에서 바꾼 키워드는 현재 화면과 수동 메일에 적용됩니다. 매일 오전 8시 자동 메일은 Vercel 환경변수 KEYWORDS 값으로 실행됩니다.</p>
+              <strong>업데이트 안내</strong>
+              <p>최신 뉴스 업데이트 버튼은 네이버 뉴스 API를 다시 호출합니다. 같은 시각에 새 기사가 없으면 목록이 이전과 같을 수 있습니다.</p>
             </div>
           </section>
 
@@ -222,7 +245,7 @@ function App() {
         <section className="briefing">
           <div className="briefing-head">
             <div>
-              <span>{formattedUpdatedAt ? `업데이트: ${formattedUpdatedAt}` : "최신 뉴스 로딩 중"}</span>
+              <span>{formattedUpdatedAt ? `업데이트: ${formattedUpdatedAt} · 새로고침 ${refreshCount}회` : "최신 뉴스 로딩 중"}</span>
               <h2>오늘의 건축 시사 브리핑</h2>
             </div>
             <div className="chips">{categories.map((c) => <span className="chip" key={c.name}>{c.name}</span>)}</div>
@@ -252,6 +275,16 @@ function App() {
           <section className="block">
             <h3>3. 건축 분야에 미칠 종합 영향</h3>
             <div className="impact-grid">{impacts.map((impact, index) => <div className="impact" key={impact}><span>{index + 1}</span><p>{impact}</p></div>)}</div>
+          </section>
+
+          <section className="block">
+            <h3>4. 오늘의 건축 키워드</h3>
+            <p className="sub">뉴스를 건축적으로 읽기 위해 추출한 공간·프로그램 중심 키워드입니다.</p>
+            <div className="chips big">
+              {architectureKeywords.map((keyword) => (
+                <span className="chip dark" key={keyword}>{keyword}</span>
+              ))}
+            </div>
           </section>
 
           <section className="question">

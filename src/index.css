@@ -28,6 +28,7 @@ textarea { min-height: 84px; resize: vertical; }
 .category-card { border: 1px solid #eef2f7; background: #fafafa; border-radius: 22px; padding: 15px; }
 .category-title { font-weight: 900; font-size: 14px; margin-bottom: 10px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips.big { gap: 10px; }
 .chip { display: inline-flex; align-items: center; border: 0; border-radius: 999px; background: #f1f5f9; color: #475569; padding: 7px 10px; font-size: 12px; font-weight: 800; }
 .chip.dark { background: #111827; color: #fff; }
 .chip.removable:hover { background: #334155; }

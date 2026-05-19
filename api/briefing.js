@@ -11,6 +11,18 @@ const defaultCategories = [
 
 const defaultKeywords = defaultCategories.flatMap((category) => category.keywords);
 
+const defaultArchitectureKeywords = [
+  "복합 프로그램",
+  "생활 인프라",
+  "반외부공간",
+  "도시재생",
+  "보행환경",
+  "도심 물류",
+  "공공공간",
+  "리노베이션",
+  "기후 대응"
+];
+
 const architectureWords = [
   "건축", "도시", "공간", "주거", "상업", "상권", "시장", "개발", "재생",
   "정비", "보행", "도로", "공원", "시설", "인프라", "물류", "기후", "환경",
@@ -69,7 +81,7 @@ function createSearchQueries(keywords = []) {
     ]);
 }
 
-async function fetchNaverNews({ keywords = [], display = 7 } = {}) {
+async function fetchNaverNews({ keywords = [], display = 7, refresh = "" } = {}) {
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
@@ -87,6 +99,7 @@ async function fetchNaverNews({ keywords = [], display = 7 } = {}) {
     url.searchParams.set("display", "5");
     url.searchParams.set("start", "1");
     url.searchParams.set("sort", "date");
+    if (refresh) url.searchParams.set("_refresh", refresh);
 
     try {
       const response = await fetch(url.toString(), {
@@ -141,7 +154,7 @@ function formatDate(dateValue) {
   return d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-function createBriefingHtml({ project = "건축 프로젝트", keywords = [], newsItems = [] } = {}) {
+function createBriefingHtml({ project = "건축 시사 브리핑", keywords = [], newsItems = [] } = {}) {
   const keywordText = Array.isArray(keywords) && keywords.length ? keywords.join(", ") : defaultKeywords.join(", ");
   const items = newsItems.length ? newsItems : getFallbackNews(keywords);
 
@@ -156,6 +169,10 @@ function createBriefingHtml({ project = "건축 프로젝트", keywords = [], ne
     </tr>
   `).join("");
 
+  const architectureKeywordHtml = defaultArchitectureKeywords
+    .map((keyword) => `<span style="display:inline-block;margin:4px;padding:7px 10px;border-radius:999px;background:#111827;color:#fff;font-size:12px;font-weight:700;">${keyword}</span>`)
+    .join("");
+
   return `
   <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f5;padding:32px;">
     <div style="max-width:760px;margin:0 auto;background:#ffffff;border-radius:24px;padding:32px;">
@@ -163,7 +180,7 @@ function createBriefingHtml({ project = "건축 프로젝트", keywords = [], ne
       <h1 style="margin:0 0 18px;color:#111827;font-size:30px;letter-spacing:-0.04em;">오늘의 건축 시사 브리핑</h1>
       <p style="margin:0 0 20px;color:#374151;line-height:1.7;">
         현재 프로젝트: <strong>${project}</strong><br/>
-        적용된 관심 키워드: ${keywordText}
+        적용된 뉴스 키워드: ${keywordText}
       </p>
       <h2 style="margin:28px 0 6px;color:#111827;font-size:22px;">1. 오늘의 주요 뉴스</h2>
       <table style="width:100%;border-collapse:collapse;">${newsHtml}</table>
@@ -178,17 +195,19 @@ function createBriefingHtml({ project = "건축 프로젝트", keywords = [], ne
         <li>정책·경제·인구·기후·기술 이슈는 건축의 규모, 용도, 운영 방식, 공공성에 직접적인 영향을 준다.</li>
         <li>건축 에이전트는 뉴스 자체보다 여러 뉴스가 함께 만들어내는 공간적 요구를 파악하는 데 목적이 있다.</li>
       </ul>
+      <h2 style="margin:32px 0 10px;color:#111827;font-size:22px;">4. 오늘의 건축 키워드</h2>
+      <div>${architectureKeywordHtml}</div>
     </div>
   </div>`;
 }
 
-function createBriefingText({ project = "건축 프로젝트", keywords = [], newsItems = [] } = {}) {
+function createBriefingText({ project = "건축 시사 브리핑", keywords = [], newsItems = [] } = {}) {
   const items = newsItems.length ? newsItems : getFallbackNews(keywords);
   const newsText = items.map((n, i) => `${i + 1}. [${n.category}] ${n.title}\n- ${n.summary}\n- 기사 원문: ${n.url}`).join("\n\n");
   return `Urban Brief AI | 오늘의 건축 시사 브리핑
 
 현재 프로젝트: ${project}
-적용된 관심 키워드: ${Array.isArray(keywords) ? keywords.join(", ") : ""}
+적용된 뉴스 키워드: ${Array.isArray(keywords) ? keywords.join(", ") : ""}
 
 1. 오늘의 주요 뉴스
 ${newsText}
@@ -198,12 +217,16 @@ ${newsText}
 
 3. 건축 분야에 미칠 종합 영향
 - 건축은 사회 전반의 흐름을 공간 프로그램과 도시 구조의 변화로 해석해야 한다.
-- 정책·경제·인구·기후·기술 이슈는 건축의 규모, 용도, 운영 방식, 공공성에 영향을 준다.`;
+- 정책·경제·인구·기후·기술 이슈는 건축의 규모, 용도, 운영 방식, 공공성에 영향을 준다.
+
+4. 오늘의 건축 키워드
+${defaultArchitectureKeywords.join(", ")}`;
 }
 
 module.exports = {
   defaultCategories,
   defaultKeywords,
+  defaultArchitectureKeywords,
   fetchNaverNews,
   getFallbackNews,
   createBriefingHtml,
