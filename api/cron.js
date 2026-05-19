@@ -8,13 +8,13 @@ module.exports = async function handler(req, res) {
     const recipient = process.env.RECIPIENT_EMAIL;
     if (!recipient) return res.status(500).json({ error: "RECIPIENT_EMAIL이 설정되지 않았습니다." });
 
-    const project = process.env.PROJECT_NAME || "남대문시장 C·D동 리노베이션";
+    const project = process.env.PROJECT_NAME || "건축 시사 브리핑";
     const keywords = (process.env.KEYWORDS || defaultKeywords.join(","))
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
 
-    const newsItems = await fetchNaverNews({ keywords, display: 5 });
+    const newsItems = await fetchNaverNews({ keywords, display: 7 });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 
