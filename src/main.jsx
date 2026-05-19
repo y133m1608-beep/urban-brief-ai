@@ -51,7 +51,7 @@ function App() {
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
 
   const commonFlow =
-    "오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 함께 읽기 위해 수집되었다. 건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.";
+    "오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다. 건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.";
 
   const impacts = [
     "건축은 사회 전반의 흐름을 읽고, 이를 공간 프로그램과 도시 구조의 변화로 해석하는 역할을 요구받는다.",
@@ -69,11 +69,12 @@ function App() {
     const refresh = Date.now();
 
     setIsLoadingNews(true);
-    setStatus("최신 뉴스를 다시 불러오는 중입니다...");
+    setStatus("7개 분야에서 각각 최신 뉴스를 불러오는 중입니다...");
 
     try {
-      const query = encodeURIComponent(nextKeywords.join(","));
-      const response = await fetch(`/api/news?keywords=${query}&refresh=${refresh}`, {
+      const categoryParam = encodeURIComponent(JSON.stringify(nextCategories));
+      const keywordParam = encodeURIComponent(nextKeywords.join(","));
+      const response = await fetch(`/api/news?categories=${categoryParam}&keywords=${keywordParam}&refresh=${refresh}`, {
         cache: "no-store"
       });
       const data = await response.json();
@@ -83,7 +84,7 @@ function App() {
       setNewsItems(data.newsItems || []);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
-      setStatus("최신 뉴스가 업데이트되었습니다. 새 기사가 없으면 목록이 이전과 같을 수 있습니다.");
+      setStatus("7개 분야에서 골고루 최신 뉴스가 업데이트되었습니다. 새 기사가 없으면 일부 분야는 이전과 같을 수 있습니다.");
     } catch (error) {
       setStatus(error.message || "뉴스 업데이트 중 오류가 발생했습니다.");
     } finally {
@@ -134,13 +135,13 @@ function App() {
     }
 
     setIsSending(true);
-    setStatus("분야별 관심 키워드로 메일을 보내는 중입니다...");
+    setStatus("7개 분야 뉴스로 메일을 보내는 중입니다...");
 
     try {
       const response = await fetch("/api/send", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email: email.trim(), project, keywords })
+        body: JSON.stringify({ email: email.trim(), project, keywords, categories })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "메일 발송에 실패했습니다.");
@@ -161,17 +162,17 @@ function App() {
     <div className="page">
       <header className="hero">
         <div>
-          <div className="eyebrow">7개 분야 기반 건축 시사 브리핑</div>
+          <div className="eyebrow">7개 분야 균형형 건축 시사 브리핑</div>
           <h1>Urban Brief AI</h1>
           <p>
-            정책·경제·사회·도시·환경·기술·문화 흐름을 함께 읽고,
+            정책·경제·사회·도시·환경·기술·문화 흐름을 균형 있게 읽고,
             여러 뉴스가 건축과 도시공간에 미칠 영향을 종합적으로 분석하는 에이전트입니다.
           </p>
         </div>
         <div className="hero-card">
           <span>오늘 생성된 브리핑</span>
           <strong>{newsItems.length || 0}개 뉴스</strong>
-          <p>관심 키워드 기반 최신 뉴스를 건축적 흐름으로 재분류합니다.</p>
+          <p>각 분야에서 1개씩 최신 뉴스를 가져와 건축적 흐름으로 재분류합니다.</p>
           <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>
             {isLoadingNews ? "업데이트 중..." : "최신 뉴스 업데이트"}
           </button>
@@ -224,8 +225,8 @@ function App() {
             <button className="mail-button" onClick={sendEmail} disabled={isSending}>{isSending ? "전송 중..." : "브리핑 메일 보내기"}</button>
             {status && <p className="notice">{status}</p>}
             <div className="small-info">
-              <strong>업데이트 안내</strong>
-              <p>최신 뉴스 업데이트 버튼은 네이버 뉴스 API를 다시 호출합니다. 같은 시각에 새 기사가 없으면 목록이 이전과 같을 수 있습니다.</p>
+              <strong>균형 수집 방식</strong>
+              <p>한 키워드에 몰리지 않도록 정책·경제·사회·도시·환경·기술·문화 분야에서 각각 1개씩 뉴스를 가져옵니다.</p>
             </div>
           </section>
 
@@ -233,7 +234,7 @@ function App() {
             <h2>에이전트 작동 흐름</h2>
             <ol className="steps">
               <li>7개 뉴스 분야 설정</li>
-              <li>분야별 관심 키워드로 최신 뉴스 수집</li>
+              <li>분야별로 1개씩 최신 뉴스 수집</li>
               <li>기사 원문 링크 연결</li>
               <li>뉴스 간 공통 흐름 도출</li>
               <li>건축 분야 영향 종합 분석</li>
@@ -253,7 +254,7 @@ function App() {
 
           <section className="block">
             <h3>1. 오늘의 주요 뉴스</h3>
-            <p className="sub">정책·경제·사회·도시·환경·기술·문화 키워드로 최신 뉴스를 수집합니다. 뉴스 카드는 기사 원문 링크로 이동합니다.</p>
+            <p className="sub">정책·경제·사회·도시·환경·기술·문화 분야에서 각각 최신 뉴스를 1개씩 수집합니다. 뉴스 카드는 기사 원문 링크로 이동합니다.</p>
             <div className="news-list">
               {newsItems.map((news, index) => (
                 <a className="news-card" href={news.url} target="_blank" rel="noreferrer" key={`${news.title}-${index}`}>

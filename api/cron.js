@@ -1,6 +1,6 @@
 
 const { Resend } = require("resend");
-const { createBriefingHtml, createBriefingText, fetchNaverNews, defaultKeywords } = require("./briefing");
+const { createBriefingHtml, createBriefingText, fetchNaverNews, defaultCategories, defaultKeywords } = require("./briefing");
 
 module.exports = async function handler(req, res) {
   try {
@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
       .map((item) => item.trim())
       .filter(Boolean);
 
-    const newsItems = await fetchNaverNews({ keywords, display: 7, refresh: Date.now() });
+    const newsItems = await fetchNaverNews({ keywords, categories: defaultCategories, display: 7, refresh: Date.now() });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 
@@ -22,8 +22,8 @@ module.exports = async function handler(req, res) {
       from,
       to: recipient,
       subject: "Urban Brief AI | 오늘의 건축 시사 브리핑",
-      html: createBriefingHtml({ project, keywords, newsItems }),
-      text: createBriefingText({ project, keywords, newsItems })
+      html: createBriefingHtml({ project, keywords, categories: defaultCategories, newsItems }),
+      text: createBriefingText({ project, keywords, categories: defaultCategories, newsItems })
     });
 
     return res.status(200).json({ ok: true, message: "scheduled email sent", result, newsItems, appliedKeywords: keywords });

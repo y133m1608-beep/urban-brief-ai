@@ -44,15 +44,16 @@ function normalizeKeyword(value) {
   return String(value || "").trim();
 }
 
-function normalizeNaverItem(item, keyword, query) {
+function normalizeNaverItem(item, categoryName, keyword, query) {
   return {
-    category: keyword,
+    category: categoryName,
+    keyword,
     title: stripHtml(item.title),
     summary: stripHtml(item.description),
     url: item.originallink || item.link,
     naverUrl: item.link,
     publishedAt: item.pubDate || "",
-    tags: [keyword, "사회흐름", "건축해석"].filter(Boolean).slice(0, 3),
+    tags: [categoryName, keyword, "건축해석"].filter(Boolean).slice(0, 3),
     query
   };
 }
@@ -67,36 +68,49 @@ function isRelevant(item, keyword) {
   return hasArchitectureWord;
 }
 
-function createSearchQueries(keywords = []) {
-  const selected = Array.isArray(keywords) && keywords.length ? keywords : defaultKeywords;
+function createCategoryQueries(categories = []) {
+  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
 
-  return selected
-    .map(normalizeKeyword)
-    .filter(Boolean)
-    .slice(0, 14)
-    .flatMap((keyword) => [
-      { keyword, query: `${keyword} 도시 공간` },
-      { keyword, query: `${keyword} 정책 사회` },
-      { keyword, query: `${keyword} 건축 도시` }
-    ]);
+  return selected.map((category) => {
+    const keywords = Array.isArray(category.keywords) && category.keywords.length
+      ? category.keywords.map(normalizeKeyword).filter(Boolean)
+      : [];
+
+    const baseKeywords = keywords.length ? keywords : ["도시", "사회"];
+    const keywordText = baseKeywords.join(" OR ");
+
+    return {
+      categoryName: category.name,
+      keywords: baseKeywords,
+      queries: [
+        `${keywordText} 도시 공간`,
+        `${keywordText} 정책 사회`,
+        `${keywordText} 건축 도시`
+      ]
+    };
+  });
 }
 
-async function fetchNaverNews({ keywords = [], display = 7, refresh = "" } = {}) {
+function categoriesFromKeywords(keywords = []) {
+  if (!Array.isArray(keywords) || !keywords.length) return defaultCategories;
+
+  return defaultCategories.map((category) => ({
+    ...category,
+    keywords: category.keywords.filter((keyword) => keywords.includes(keyword))
+  })).filter((category) => category.keywords.length);
+}
+
+async function fetchNewsForCategory({ categoryName, keywords, queries, refresh = "" } = {}) {
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return [];
 
-  if (!clientId || !clientSecret) {
-    return getFallbackNews(keywords);
-  }
-
-  const queries = createSearchQueries(keywords);
-  const results = [];
   const seen = new Set();
 
-  for (const search of queries) {
+  for (const query of queries) {
     const url = new URL("https://openapi.naver.com/v1/search/news.json");
-    url.searchParams.set("query", search.query);
-    url.searchParams.set("display", "5");
+    url.searchParams.set("query", query);
+    url.searchParams.set("display", "10");
     url.searchParams.set("start", "1");
     url.searchParams.set("sort", "date");
     if (refresh) url.searchParams.set("_refresh", refresh);
@@ -115,35 +129,70 @@ async function fetchNaverNews({ keywords = [], display = 7, refresh = "" } = {})
       const items = Array.isArray(data.items) ? data.items : [];
 
       for (const item of items) {
-        const normalized = normalizeNaverItem(item, search.keyword, search.query);
+        const keyword = keywords.find((k) => {
+          const title = stripHtml(item.title).toLowerCase();
+          const summary = stripHtml(item.description).toLowerCase();
+          return `${title} ${summary}`.includes(k.toLowerCase());
+        }) || keywords[0];
+
+        const normalized = normalizeNaverItem(item, categoryName, keyword, query);
         const key = normalized.url || normalized.title;
         if (!key || seen.has(key)) continue;
-
-        if (!isRelevant(normalized, search.keyword)) continue;
-
         seen.add(key);
-        results.push(normalized);
-        break;
-      }
 
-      if (results.length >= display) break;
+        if (!isRelevant(normalized, keyword)) continue;
+
+        return normalized;
+      }
     } catch (error) {
       continue;
     }
   }
 
-  return results.length ? results.slice(0, display) : getFallbackNews(keywords);
+  return null;
 }
 
-function getFallbackNews(keywords = []) {
-  const selected = Array.isArray(keywords) && keywords.length ? keywords : defaultKeywords;
-  return selected.slice(0, 7).map((keyword) => ({
-    category: keyword,
-    title: `${keyword} 관련 최신 뉴스가 부족하여 기본 브리핑 항목을 표시합니다`,
-    summary: "현재 키워드와 정확히 맞는 최신 뉴스가 부족합니다. 키워드를 더 넓게 조정하거나, 네이버 뉴스 API 환경변수를 확인하세요.",
+async function fetchNaverNews({ keywords = [], categories = null, display = 7, refresh = "" } = {}) {
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
+
+  const selectedCategories = categories && categories.length
+    ? categories
+    : categoriesFromKeywords(keywords);
+
+  if (!clientId || !clientSecret) {
+    return getFallbackNews({ categories: selectedCategories });
+  }
+
+  const categoryQueries = createCategoryQueries(selectedCategories);
+  const results = [];
+  const seen = new Set();
+
+  for (const category of categoryQueries) {
+    const item = await fetchNewsForCategory({ ...category, refresh });
+    if (!item) continue;
+
+    const key = item.url || item.title;
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    results.push(item);
+  }
+
+  return results.length ? results.slice(0, display) : getFallbackNews({ categories: selectedCategories });
+}
+
+function getFallbackNews({ categories = defaultCategories } = {}) {
+  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
+
+  return selected.slice(0, 7).map((category) => ({
+    category: category.name,
+    keyword: category.keywords?.[0] || category.name,
+    title: `${category.name} 분야 최신 뉴스가 부족하여 기본 브리핑 항목을 표시합니다`,
+    summary: "현재 분야와 정확히 맞는 최신 뉴스가 부족합니다. 키워드를 더 넓게 조정하거나, 네이버 뉴스 API 환경변수를 확인하세요.",
     url: "https://news.naver.com/",
     publishedAt: "",
-    tags: [keyword, "사회흐름", "건축해석"].filter(Boolean)
+    tags: [category.name, category.keywords?.[0] || "뉴스", "건축해석"].filter(Boolean)
   }));
 }
 
@@ -154,14 +203,15 @@ function formatDate(dateValue) {
   return d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-function createBriefingHtml({ project = "건축 시사 브리핑", keywords = [], newsItems = [] } = {}) {
-  const keywordText = Array.isArray(keywords) && keywords.length ? keywords.join(", ") : defaultKeywords.join(", ");
-  const items = newsItems.length ? newsItems : getFallbackNews(keywords);
+function createBriefingHtml({ project = "건축 시사 브리핑", keywords = [], categories = null, newsItems = [] } = {}) {
+  const selectedCategories = categories && categories.length ? categories : categoriesFromKeywords(keywords);
+  const keywordText = selectedCategories.flatMap((category) => category.keywords || []).join(", ");
+  const items = newsItems.length ? newsItems : getFallbackNews({ categories: selectedCategories });
 
   const newsHtml = items.map((news, index) => `
     <tr>
       <td style="padding:18px 0;border-bottom:1px solid #e5e7eb;">
-        <p style="margin:0 0 6px;color:#64748b;font-size:13px;font-weight:700;">${index + 1}. ${news.category}${formatDate(news.publishedAt) ? " · " + formatDate(news.publishedAt) : ""}</p>
+        <p style="margin:0 0 6px;color:#64748b;font-size:13px;font-weight:700;">${index + 1}. ${news.category}${news.keyword ? " · " + news.keyword : ""}${formatDate(news.publishedAt) ? " · " + formatDate(news.publishedAt) : ""}</p>
         <h3 style="margin:0 0 8px;font-size:18px;color:#111827;">${news.title}</h3>
         <p style="margin:0 0 10px;color:#374151;line-height:1.65;font-size:14px;">${news.summary}</p>
         <a href="${news.url}" target="_blank" style="color:#111827;font-weight:700;">기사 원문 열기 ↗</a>
@@ -186,7 +236,7 @@ function createBriefingHtml({ project = "건축 시사 브리핑", keywords = []
       <table style="width:100%;border-collapse:collapse;">${newsHtml}</table>
       <h2 style="margin:32px 0 10px;color:#111827;font-size:22px;">2. 오늘의 공통 흐름</h2>
       <p style="margin:0;color:#374151;line-height:1.75;">
-        오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 함께 읽기 위해 수집되었다.
+        오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다.
         건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.
       </p>
       <h2 style="margin:32px 0 10px;color:#111827;font-size:22px;">3. 건축 분야에 미칠 종합 영향</h2>
@@ -201,19 +251,19 @@ function createBriefingHtml({ project = "건축 시사 브리핑", keywords = []
   </div>`;
 }
 
-function createBriefingText({ project = "건축 시사 브리핑", keywords = [], newsItems = [] } = {}) {
-  const items = newsItems.length ? newsItems : getFallbackNews(keywords);
+function createBriefingText({ project = "건축 시사 브리핑", keywords = [], categories = null, newsItems = [] } = {}) {
+  const selectedCategories = categories && categories.length ? categories : categoriesFromKeywords(keywords);
+  const items = newsItems.length ? newsItems : getFallbackNews({ categories: selectedCategories });
   const newsText = items.map((n, i) => `${i + 1}. [${n.category}] ${n.title}\n- ${n.summary}\n- 기사 원문: ${n.url}`).join("\n\n");
   return `Urban Brief AI | 오늘의 건축 시사 브리핑
 
 현재 프로젝트: ${project}
-적용된 뉴스 키워드: ${Array.isArray(keywords) ? keywords.join(", ") : ""}
 
 1. 오늘의 주요 뉴스
 ${newsText}
 
 2. 오늘의 공통 흐름
-오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 함께 읽기 위해 수집되었다.
+오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다.
 
 3. 건축 분야에 미칠 종합 영향
 - 건축은 사회 전반의 흐름을 공간 프로그램과 도시 구조의 변화로 해석해야 한다.
