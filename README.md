@@ -1,13 +1,23 @@
-# Urban Brief AI v2
+# Urban Brief AI v3 - Auto Mail
 
-## 변경 내용
-- 뉴스 카드 클릭 시 관련 뉴스 페이지가 새 탭으로 열리도록 수정
-- 이메일 입력 후 `메일 초안 열기` 버튼을 누르면 브리핑 내용이 담긴 메일 초안이 열리도록 수정
+## 포함 기능
+- 뉴스 카드 클릭 시 관련 뉴스 검색 페이지로 이동
+- `브리핑 메일 보내기` 버튼 클릭 시 실제 이메일 발송
+- Vercel Cron Job으로 매일 오전 8시경 자동 발송
 
-## 중요한 점
-이 버전은 Vercel에 올리는 정적 프론트엔드 데모입니다.
-브라우저에서만 작동하기 때문에 이메일을 자동으로 발송하지는 않습니다.
-자동 발송을 하려면 Resend, SendGrid, EmailJS 같은 이메일 API와 서버리스 함수 연결이 필요합니다.
+## 필수 설정
+Vercel Project Settings > Environment Variables 에서 아래 값을 설정하세요.
 
-## 배포
-기존 GitHub 저장소에서 파일을 모두 교체한 뒤 Vercel이 자동 재배포되면 됩니다.
+- RESEND_API_KEY: Resend에서 발급받은 API Key
+- RECIPIENT_EMAIL: 매일 자동 브리핑을 받을 이메일
+- FROM_EMAIL: 선택 사항. 기본값은 Urban Brief AI <onboarding@resend.dev>
+- PROJECT_NAME: 선택 사항
+- KEYWORDS: 선택 사항. 쉼표로 구분
+
+## Cron 시간
+vercel.json의 `0 23 * * *`는 UTC 기준 23:00입니다.
+한국 시간으로 다음날 오전 8시입니다.
+
+## 주의
+Resend의 테스트 발신 주소(onboarding@resend.dev)는 계정/수신자 제한이 있을 수 있습니다.
+제대로 운영하려면 Resend에서 도메인을 인증하고 FROM_EMAIL을 인증된 도메인 주소로 설정하세요.

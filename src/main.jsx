@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
@@ -53,49 +53,13 @@ const newsItems = [
 
 const initialKeywords = ["도시재생", "전통시장", "공중가로", "물류", "주거", "기후대응", "공공공간"];
 
-function makeBriefingBody({ project, keywords }) {
-  const newsText = newsItems
-    .map(
-      (n, i) =>
-        `${i + 1}. [${n.category}] ${n.title}\n- ${n.summary}\n- 관련 링크: ${n.url}`
-    )
-    .join("\n\n");
-
-  return `Urban Brief AI | 오늘의 건축 시사 브리핑
-
-현재 프로젝트:
-${project}
-
-관심 키워드:
-${keywords.join(", ")}
-
-1. 오늘의 주요 뉴스
-${newsText}
-
-2. 오늘의 공통 흐름
-오늘의 뉴스들은 공통적으로 기존 도시공간을 단순히 새로 개발하는 것이 아니라, 생활 인프라로 다시 조직하려는 흐름을 보여준다. 노후 상업지, 고령화, 도심 물류, 기후 대응, 로컬 경험은 서로 다른 이슈처럼 보이지만 모두 기존 도시조직 안에서 새로운 기능을 수용하고 연결하는 문제로 이어진다.
-
-3. 건축 분야에 미칠 종합 영향
-- 기존 건축물과 도시조직을 철거하기보다, 새로운 프로그램을 삽입하고 재구성하는 리노베이션 전략이 중요해진다.
-- 주거, 상업, 물류, 돌봄, 공공공간이 분리된 시설이 아니라 하나의 생활권 안에서 복합적으로 결합될 가능성이 커진다.
-- 기후 변화에 대응하기 위해 그늘, 캐노피, 중정, 공중가로, 테라스 같은 반외부공간이 도시 인프라로 다뤄질 수 있다.
-- 건축가는 형태를 만드는 역할을 넘어 사회적 변화와 공간 프로그램 사이의 관계를 조직하는 역할을 요구받게 된다.
-
-4. 오늘의 건축적 질문
-앞으로 건축은 새로운 형태를 만드는 것보다, 기존 도시 안에서 주거·상업·물류·돌봄·기후 대응 기능을 어떻게 함께 조직할 것인가?`;
-}
-
 function App() {
-  const [email, setEmail] = useState("somi@architecture.ai");
+  const [email, setEmail] = useState("");
   const [project, setProject] = useState("남대문시장 C·D동 리노베이션");
   const [keywords, setKeywords] = useState(initialKeywords);
   const [keywordInput, setKeywordInput] = useState("");
-  const [mailNotice, setMailNotice] = useState("");
-
-  const briefingBody = useMemo(
-    () => makeBriefingBody({ project, keywords }),
-    [project, keywords]
-  );
+  const [status, setStatus] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const commonFlow =
     "오늘의 뉴스들은 공통적으로 기존 도시공간을 단순히 새로 개발하는 것이 아니라, 생활 인프라로 다시 조직하려는 흐름을 보여준다. 노후 상업지, 고령화, 도심 물류, 기후 대응, 로컬 경험은 서로 다른 이슈처럼 보이지만 모두 기존 도시조직 안에서 새로운 기능을 수용하고 연결하는 문제로 이어진다.";
@@ -114,20 +78,40 @@ function App() {
     setKeywordInput("");
   };
 
-  const openMailDraft = () => {
+  const sendEmail = async () => {
     if (!email.trim()) {
-      setMailNotice("이메일 주소를 먼저 입력하세요.");
+      setStatus("수신 이메일을 먼저 입력하세요.");
       return;
     }
 
-    const subject = encodeURIComponent("Urban Brief AI | 오늘의 건축 시사 브리핑");
-    const body = encodeURIComponent(briefingBody);
-    const mailto = `mailto:${email.trim()}?subject=${subject}&body=${body}`;
+    setIsSending(true);
+    setStatus("메일을 보내는 중입니다...");
 
-    window.location.href = mailto;
-    setMailNotice(
-      "메일 앱이 열리면 직접 전송을 눌러야 합니다. 실제 자동 발송은 별도 이메일 서버나 API 연결이 필요합니다."
-    );
+    try {
+      const response = await fetch("/api/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          project,
+          keywords
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "메일 발송에 실패했습니다.");
+      }
+
+      setStatus("메일이 전송되었습니다. 받은 편지함 또는 스팸함을 확인하세요.");
+    } catch (error) {
+      setStatus(error.message || "메일 발송 중 오류가 발생했습니다.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -160,7 +144,11 @@ function App() {
             <p className="sub">에이전트가 뉴스 필터링에 사용하는 관심 정보입니다.</p>
 
             <label>수신 이메일</label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              value={email}
+              placeholder="실제 받을 이메일을 입력하세요"
+              onChange={(e) => setEmail(e.target.value)}
+            />
 
             <label>현재 프로젝트</label>
             <textarea value={project} onChange={(e) => setProject(e.target.value)} />
@@ -182,10 +170,15 @@ function App() {
               <button onClick={addKeyword}>추가</button>
             </div>
 
-            <button className="mail-button" onClick={openMailDraft}>
-              메일 초안 열기
+            <button className="mail-button" onClick={sendEmail} disabled={isSending}>
+              {isSending ? "전송 중..." : "브리핑 메일 보내기"}
             </button>
-            {mailNotice && <p className="notice">{mailNotice}</p>}
+            {status && <p className="notice">{status}</p>}
+
+            <div className="small-info">
+              <strong>자동 발송 설정</strong>
+              <p>Vercel 환경변수에 RECIPIENT_EMAIL을 설정하면 매일 오전 8시경 자동 발송됩니다.</p>
+            </div>
           </section>
 
           <section className="panel">
