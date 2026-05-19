@@ -13,3 +13,13 @@
 - RECIPIENT_EMAIL
 - NAVER_CLIENT_ID
 - NAVER_CLIENT_SECRET
+
+
+## v10 추가 기능
+- 오늘의 주요 뉴스 대표 기사들을 AI가 종합해 `오늘의 건축적 질문`을 자동 생성합니다.
+- OPENAI_API_KEY가 없으면 기본 규칙 기반 질문으로 자동 대체됩니다.
+
+## 추가 Vercel Environment Variables
+선택:
+- OPENAI_API_KEY = OpenAI API Key
+- OPENAI_MODEL = gpt-4.1-mini

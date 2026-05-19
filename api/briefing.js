@@ -259,6 +259,91 @@ ${newsText}
 ${defaultArchitectureKeywords.join(", ")}`;
 }
 
+
+function createFallbackQuestion(newsItems = []) {
+  const text = newsItems.map((item) => `${item.category} ${item.keyword || ""} ${item.title} ${item.summary}`).join(" ");
+
+  if (text.includes("기후") || text.includes("폭염") || text.includes("재난") || text.includes("침수")) {
+    return "기후위기와 재난 대응이 일상화되는 상황에서 건축은 외부공간과 생활 인프라를 어떻게 기후 대응 장치로 전환할 수 있을까?";
+  }
+
+  if (text.includes("고령") || text.includes("1인가구") || text.includes("인구") || text.includes("돌봄")) {
+    return "인구구조가 변화하는 상황에서 주거와 공공공간은 개인화된 삶과 공동체적 돌봄을 어떻게 함께 수용해야 할까?";
+  }
+
+  if (text.includes("상권") || text.includes("소비") || text.includes("관광") || text.includes("시장")) {
+    return "소비와 지역상권의 변화 속에서 상업공간은 판매를 넘어 체류, 경험, 지역성을 어떻게 담아야 할까?";
+  }
+
+  if (text.includes("AI") || text.includes("기술") || text.includes("물류")) {
+    return "기술과 산업 구조가 바뀌는 상황에서 건축은 보이지 않는 데이터·물류·운영 시스템을 어떤 공간 구조로 드러낼 수 있을까?";
+  }
+
+  return "정책, 경제, 사회, 도시, 환경, 기술, 문화 변화는 앞으로 어떤 공간 프로그램과 도시 구조를 요구하게 될까?";
+}
+
+async function generateArchitecturalQuestion({ newsItems = [] } = {}) {
+  const fallback = createFallbackQuestion(newsItems);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return fallback;
+  }
+
+  try {
+    const compactNews = newsItems.slice(0, 7).map((item, index) => ({
+      index: index + 1,
+      category: item.category,
+      keyword: item.keyword,
+      title: item.title,
+      summary: item.summary
+    }));
+
+    const prompt = `
+너는 건축 시사 브리핑 에이전트다.
+아래 오늘의 뉴스들을 종합해서, 건축가/건축학과 학생이 생각해볼 만한 "오늘의 건축적 질문"을 한국어 한 문장으로 만들어라.
+
+조건:
+- 뉴스 하나가 아니라 전체 흐름을 종합할 것
+- 건축, 도시공간, 프로그램, 생활 방식, 공공성 중 하나 이상과 연결할 것
+- 질문형 문장으로 끝낼 것
+- 70자 이상 150자 이하
+- 따옴표 없이 질문만 출력할 것
+
+뉴스:
+${JSON.stringify(compactNews, null, 2)}
+`;
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        input: prompt
+      })
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const data = await response.json();
+    const outputText =
+      data.output_text ||
+      (Array.isArray(data.output)
+        ? data.output.flatMap((part) => part.content || []).map((content) => content.text || "").join("")
+        : "");
+
+    const question = String(outputText || "").trim();
+    return question || fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+
 module.exports = {
   defaultCategories,
   defaultKeywords,
@@ -268,5 +353,7 @@ module.exports = {
   getFallbackNews,
   createBriefingHtml,
   createBriefingText,
-  stripHtml
+  stripHtml,
+  createFallbackQuestion,
+  generateArchitecturalQuestion
 };

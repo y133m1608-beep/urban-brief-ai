@@ -82,6 +82,7 @@ function App() {
   const [updatedAt, setUpdatedAt] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [architecturalQuestion, setArchitecturalQuestion] = useState("{architecturalQuestion}");
 
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
 
@@ -117,6 +118,7 @@ function App() {
       if (!response.ok) throw new Error(data.error || "뉴스를 불러오지 못했습니다.");
 
       setGroupedNews(data.groupedNews || []);
+      if (data.question) setArchitecturalQuestion(data.question);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
       setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
@@ -328,7 +330,7 @@ function App() {
 
           <section className="question">
             <strong>오늘의 건축적 질문</strong>
-            <p>정책, 경제, 사회, 도시, 환경, 기술, 문화 변화는 앞으로 어떤 공간 프로그램과 도시 구조를 요구하게 될까?</p>
+            <p>{architecturalQuestion}</p>
           </section>
         </section>
       </main>
