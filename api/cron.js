@@ -1,6 +1,6 @@
 
 const { Resend } = require("resend");
-const { createBriefingHtml, createBriefingText, fetchNaverNews, defaultCategories, defaultKeywords } = require("./briefing");
+const { createBriefingHtml, createBriefingText, fetchNewsByCategory, defaultCategories, defaultKeywords } = require("./briefing");
 
 module.exports = async function handler(req, res) {
   try {
@@ -14,7 +14,8 @@ module.exports = async function handler(req, res) {
       .map((item) => item.trim())
       .filter(Boolean);
 
-    const newsItems = await fetchNaverNews({ keywords, categories: defaultCategories, display: 7, refresh: Date.now() });
+    const groupedNews = await fetchNewsByCategory({ categories: defaultCategories, perCategory: 5, refresh: Date.now() });
+    const newsItems = groupedNews.map((group) => group.representative);
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 
@@ -26,7 +27,7 @@ module.exports = async function handler(req, res) {
       text: createBriefingText({ project, keywords, categories: defaultCategories, newsItems })
     });
 
-    return res.status(200).json({ ok: true, message: "scheduled email sent", result, newsItems, appliedKeywords: keywords });
+    return res.status(200).json({ ok: true, message: "scheduled email sent", result, groupedNews, newsItems });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Cron 메일 발송 중 오류가 발생했습니다." });
   }

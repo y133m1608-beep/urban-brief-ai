@@ -29,6 +29,40 @@ function flattenKeywords(categories) {
   return categories.flatMap((category) => category.keywords).filter(Boolean);
 }
 
+function ArticleDrawer({ group, onClose }) {
+  if (!group) return null;
+
+  return (
+    <div className="drawer-backdrop" onClick={onClose}>
+      <aside className="drawer" onClick={(event) => event.stopPropagation()}>
+        <div className="drawer-head">
+          <div>
+            <span>분야별 기사 목록</span>
+            <h2>{group.category}</h2>
+          </div>
+          <button onClick={onClose}>닫기</button>
+        </div>
+        <p className="drawer-desc">
+          대표 기사 외에 같은 분야에서 함께 수집된 기사들입니다. 기사를 누르면 원문으로 이동합니다.
+        </p>
+        <div className="drawer-list">
+          {group.articles.map((article, index) => (
+            <a className="drawer-article" href={article.url} target="_blank" rel="noreferrer" key={`${article.title}-${index}`}>
+              <div className="news-top">
+                <span>{article.keyword || group.category}</span>
+                <em>{String(index + 1).padStart(2, "0")}</em>
+              </div>
+              <h3>{article.title}</h3>
+              <p>{article.summary}</p>
+              <strong>기사 원문 열기 ↗</strong>
+            </a>
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function App() {
   const [email, setEmail] = useState("");
   const [project, setProject] = useState("건축 시사 브리핑");
@@ -44,11 +78,14 @@ function App() {
   const [status, setStatus] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
-  const [newsItems, setNewsItems] = useState([]);
+  const [groupedNews, setGroupedNews] = useState([]);
   const [updatedAt, setUpdatedAt] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
+  const [selectedGroup, setSelectedGroup] = useState(null);
 
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
+
+  const newsItems = groupedNews.map((group) => group.representative).filter(Boolean);
 
   const commonFlow =
     "오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다. 건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.";
@@ -65,26 +102,24 @@ function App() {
   }, [categories]);
 
   const loadNews = async (nextCategories = categories) => {
-    const nextKeywords = flattenKeywords(nextCategories);
     const refresh = Date.now();
 
     setIsLoadingNews(true);
-    setStatus("7개 분야에서 각각 최신 뉴스를 불러오는 중입니다...");
+    setStatus("7개 분야에서 대표 기사와 관련 기사 목록을 불러오는 중입니다...");
 
     try {
       const categoryParam = encodeURIComponent(JSON.stringify(nextCategories));
-      const keywordParam = encodeURIComponent(nextKeywords.join(","));
-      const response = await fetch(`/api/news?categories=${categoryParam}&keywords=${keywordParam}&refresh=${refresh}`, {
+      const response = await fetch(`/api/news?categories=${categoryParam}&refresh=${refresh}`, {
         cache: "no-store"
       });
       const data = await response.json();
 
       if (!response.ok) throw new Error(data.error || "뉴스를 불러오지 못했습니다.");
 
-      setNewsItems(data.newsItems || []);
+      setGroupedNews(data.groupedNews || []);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
-      setStatus("7개 분야에서 골고루 최신 뉴스가 업데이트되었습니다. 새 기사가 없으면 일부 분야는 이전과 같을 수 있습니다.");
+      setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
     } catch (error) {
       setStatus(error.message || "뉴스 업데이트 중 오류가 발생했습니다.");
     } finally {
@@ -145,7 +180,7 @@ function App() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "메일 발송에 실패했습니다.");
-      if (data.newsItems) setNewsItems(data.newsItems);
+      if (data.groupedNews) setGroupedNews(data.groupedNews);
       setStatus("메일이 전송되었습니다. 받은 편지함 또는 스팸함을 확인하세요.");
     } catch (error) {
       setStatus(error.message || "메일 발송 중 오류가 발생했습니다.");
@@ -166,13 +201,13 @@ function App() {
           <h1>Urban Brief AI</h1>
           <p>
             정책·경제·사회·도시·환경·기술·문화 흐름을 균형 있게 읽고,
-            여러 뉴스가 건축과 도시공간에 미칠 영향을 종합적으로 분석하는 에이전트입니다.
+            대표 기사와 관련 기사 목록을 통해 사회 이슈를 건축적으로 해석하는 에이전트입니다.
           </p>
         </div>
         <div className="hero-card">
           <span>오늘 생성된 브리핑</span>
-          <strong>{newsItems.length || 0}개 뉴스</strong>
-          <p>각 분야에서 1개씩 최신 뉴스를 가져와 건축적 흐름으로 재분류합니다.</p>
+          <strong>{newsItems.length || 0}개 대표 뉴스</strong>
+          <p>각 분야의 대표 기사를 누르면 같은 분야의 관련 기사 목록을 볼 수 있습니다.</p>
           <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>
             {isLoadingNews ? "업데이트 중..." : "최신 뉴스 업데이트"}
           </button>
@@ -225,8 +260,8 @@ function App() {
             <button className="mail-button" onClick={sendEmail} disabled={isSending}>{isSending ? "전송 중..." : "브리핑 메일 보내기"}</button>
             {status && <p className="notice">{status}</p>}
             <div className="small-info">
-              <strong>균형 수집 방식</strong>
-              <p>한 키워드에 몰리지 않도록 정책·경제·사회·도시·환경·기술·문화 분야에서 각각 1개씩 뉴스를 가져옵니다.</p>
+              <strong>기사 목록 방식</strong>
+              <p>메인에는 분야별 대표 기사가 보이고, 대표 카드를 누르면 해당 분야의 기사 여러 개가 열립니다.</p>
             </div>
           </section>
 
@@ -234,11 +269,11 @@ function App() {
             <h2>에이전트 작동 흐름</h2>
             <ol className="steps">
               <li>7개 뉴스 분야 설정</li>
-              <li>분야별로 1개씩 최신 뉴스 수집</li>
-              <li>기사 원문 링크 연결</li>
+              <li>분야별 대표 기사와 관련 기사 수집</li>
+              <li>대표 기사 클릭 시 기사 목록 표시</li>
+              <li>기사 목록에서 원문 링크 이동</li>
               <li>뉴스 간 공통 흐름 도출</li>
               <li>건축 분야 영향 종합 분석</li>
-              <li>이메일·대시보드 전달</li>
             </ol>
           </section>
         </aside>
@@ -254,20 +289,23 @@ function App() {
 
           <section className="block">
             <h3>1. 오늘의 주요 뉴스</h3>
-            <p className="sub">정책·경제·사회·도시·환경·기술·문화 분야에서 각각 최신 뉴스를 1개씩 수집합니다. 뉴스 카드는 기사 원문 링크로 이동합니다.</p>
+            <p className="sub">각 카드는 분야별 대표 기사입니다. 카드를 누르면 같은 분야의 기사 목록이 열리고, 목록 안에서 기사 원문으로 이동할 수 있습니다.</p>
             <div className="news-list">
-              {newsItems.map((news, index) => (
-                <a className="news-card" href={news.url} target="_blank" rel="noreferrer" key={`${news.title}-${index}`}>
-                  <div className="news-top"><span>{news.category}</span><em>{String(index + 1).padStart(2, "0")}</em></div>
-                  <h4>{news.title}</h4>
-                  <p>{news.summary}</p>
-                  <div className="news-bottom">
-                    <div className="chips">{(news.tags || []).map((t) => <span className="chip" key={t}>{t}</span>)}</div>
-                    <strong>기사 원문 열기 ↗</strong>
-                  </div>
-                </a>
-              ))}
-              {!newsItems.length && <div className="empty">뉴스를 불러오는 중입니다.</div>}
+              {groupedNews.map((group, index) => {
+                const news = group.representative;
+                return (
+                  <button className="news-card as-button" onClick={() => setSelectedGroup(group)} key={`${group.category}-${index}`}>
+                    <div className="news-top"><span>{group.category}</span><em>{String(index + 1).padStart(2, "0")}</em></div>
+                    <h4>{news.title}</h4>
+                    <p>{news.summary}</p>
+                    <div className="news-bottom">
+                      <div className="chips">{(news.tags || []).map((t) => <span className="chip" key={t}>{t}</span>)}</div>
+                      <strong>이 분야 기사 {group.articles.length}개 보기 →</strong>
+                    </div>
+                  </button>
+                );
+              })}
+              {!groupedNews.length && <div className="empty">뉴스를 불러오는 중입니다.</div>}
             </div>
           </section>
 
@@ -294,6 +332,8 @@ function App() {
           </section>
         </section>
       </main>
+
+      <ArticleDrawer group={selectedGroup} onClose={() => setSelectedGroup(null)} />
     </div>
   );
 }

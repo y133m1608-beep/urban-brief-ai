@@ -40,10 +40,6 @@ function stripHtml(value = "") {
     .replace(/&gt;/g, ">");
 }
 
-function normalizeKeyword(value) {
-  return String(value || "").trim();
-}
-
 function normalizeNaverItem(item, categoryName, keyword, query) {
   return {
     category: categoryName,
@@ -61,50 +57,46 @@ function normalizeNaverItem(item, categoryName, keyword, query) {
 function isRelevant(item, keyword) {
   const text = `${item.title} ${item.summary}`.toLowerCase();
   const normalizedKeyword = String(keyword || "").toLowerCase();
-
   if (normalizedKeyword && text.includes(normalizedKeyword)) return true;
-
-  const hasArchitectureWord = architectureWords.some((word) => text.includes(word.toLowerCase()));
-  return hasArchitectureWord;
-}
-
-function createCategoryQueries(categories = []) {
-  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
-
-  return selected.map((category) => {
-    const keywords = Array.isArray(category.keywords) && category.keywords.length
-      ? category.keywords.map(normalizeKeyword).filter(Boolean)
-      : [];
-
-    const baseKeywords = keywords.length ? keywords : ["도시", "사회"];
-    const keywordText = baseKeywords.join(" OR ");
-
-    return {
-      categoryName: category.name,
-      keywords: baseKeywords,
-      queries: [
-        `${keywordText} 도시 공간`,
-        `${keywordText} 정책 사회`,
-        `${keywordText} 건축 도시`
-      ]
-    };
-  });
+  return architectureWords.some((word) => text.includes(word.toLowerCase()));
 }
 
 function categoriesFromKeywords(keywords = []) {
   if (!Array.isArray(keywords) || !keywords.length) return defaultCategories;
 
-  return defaultCategories.map((category) => ({
+  const mapped = defaultCategories.map((category) => ({
     ...category,
     keywords: category.keywords.filter((keyword) => keywords.includes(keyword))
   })).filter((category) => category.keywords.length);
+
+  return mapped.length ? mapped : defaultCategories;
 }
 
-async function fetchNewsForCategory({ categoryName, keywords, queries, refresh = "" } = {}) {
+function createCategoryQueries(category) {
+  const keywords = Array.isArray(category.keywords) && category.keywords.length
+    ? category.keywords.map((item) => String(item || "").trim()).filter(Boolean)
+    : ["도시", "사회"];
+
+  const keywordText = keywords.join(" OR ");
+
+  return {
+    categoryName: category.name,
+    keywords,
+    queries: [
+      `${keywordText} 도시 공간`,
+      `${keywordText} 정책 사회`,
+      `${keywordText} 건축 도시`
+    ]
+  };
+}
+
+async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = {}) {
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) return [];
 
+  const { categoryName, keywords, queries } = createCategoryQueries(category);
+  const results = [];
   const seen = new Set();
 
   for (const query of queries) {
@@ -129,63 +121,53 @@ async function fetchNewsForCategory({ categoryName, keywords, queries, refresh =
       const items = Array.isArray(data.items) ? data.items : [];
 
       for (const item of items) {
-        const keyword = keywords.find((k) => {
-          const title = stripHtml(item.title).toLowerCase();
-          const summary = stripHtml(item.description).toLowerCase();
-          return `${title} ${summary}`.includes(k.toLowerCase());
-        }) || keywords[0];
+        const title = stripHtml(item.title).toLowerCase();
+        const summary = stripHtml(item.description).toLowerCase();
+        const matchedKeyword =
+          keywords.find((keyword) => `${title} ${summary}`.includes(keyword.toLowerCase())) || keywords[0];
 
-        const normalized = normalizeNaverItem(item, categoryName, keyword, query);
+        const normalized = normalizeNaverItem(item, categoryName, matchedKeyword, query);
         const key = normalized.url || normalized.title;
         if (!key || seen.has(key)) continue;
+        if (!isRelevant(normalized, matchedKeyword)) continue;
+
         seen.add(key);
-
-        if (!isRelevant(normalized, keyword)) continue;
-
-        return normalized;
+        results.push(normalized);
+        if (results.length >= limit) return results;
       }
     } catch (error) {
       continue;
     }
   }
 
-  return null;
+  return results;
+}
+
+async function fetchNewsByCategory({ categories = defaultCategories, perCategory = 5, refresh = "" } = {}) {
+  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
+  const grouped = [];
+
+  for (const category of selected.slice(0, 7)) {
+    const articles = await fetchArticlesForCategory({ category, limit: perCategory, refresh });
+    grouped.push({
+      category: category.name,
+      keywords: category.keywords || [],
+      representative: articles[0] || getFallbackArticle(category),
+      articles: articles.length ? articles : [getFallbackArticle(category)]
+    });
+  }
+
+  return grouped;
 }
 
 async function fetchNaverNews({ keywords = [], categories = null, display = 7, refresh = "" } = {}) {
-  const clientId = process.env.NAVER_CLIENT_ID;
-  const clientSecret = process.env.NAVER_CLIENT_SECRET;
-
-  const selectedCategories = categories && categories.length
-    ? categories
-    : categoriesFromKeywords(keywords);
-
-  if (!clientId || !clientSecret) {
-    return getFallbackNews({ categories: selectedCategories });
-  }
-
-  const categoryQueries = createCategoryQueries(selectedCategories);
-  const results = [];
-  const seen = new Set();
-
-  for (const category of categoryQueries) {
-    const item = await fetchNewsForCategory({ ...category, refresh });
-    if (!item) continue;
-
-    const key = item.url || item.title;
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-    results.push(item);
-  }
-
-  return results.length ? results.slice(0, display) : getFallbackNews({ categories: selectedCategories });
+  const selectedCategories = categories && categories.length ? categories : categoriesFromKeywords(keywords);
+  const grouped = await fetchNewsByCategory({ categories: selectedCategories, perCategory: 5, refresh });
+  return grouped.map((group) => group.representative).filter(Boolean).slice(0, display);
 }
 
-function getFallbackNews({ categories = defaultCategories } = {}) {
-  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
-
-  return selected.slice(0, 7).map((category) => ({
+function getFallbackArticle(category) {
+  return {
     category: category.name,
     keyword: category.keywords?.[0] || category.name,
     title: `${category.name} 분야 최신 뉴스가 부족하여 기본 브리핑 항목을 표시합니다`,
@@ -193,7 +175,12 @@ function getFallbackNews({ categories = defaultCategories } = {}) {
     url: "https://news.naver.com/",
     publishedAt: "",
     tags: [category.name, category.keywords?.[0] || "뉴스", "건축해석"].filter(Boolean)
-  }));
+  };
+}
+
+function getFallbackNews({ categories = defaultCategories } = {}) {
+  const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
+  return selected.slice(0, 7).map((category) => getFallbackArticle(category));
 }
 
 function formatDate(dateValue) {
@@ -267,7 +254,6 @@ ${newsText}
 
 3. 건축 분야에 미칠 종합 영향
 - 건축은 사회 전반의 흐름을 공간 프로그램과 도시 구조의 변화로 해석해야 한다.
-- 정책·경제·인구·기후·기술 이슈는 건축의 규모, 용도, 운영 방식, 공공성에 영향을 준다.
 
 4. 오늘의 건축 키워드
 ${defaultArchitectureKeywords.join(", ")}`;
@@ -278,6 +264,7 @@ module.exports = {
   defaultKeywords,
   defaultArchitectureKeywords,
   fetchNaverNews,
+  fetchNewsByCategory,
   getFallbackNews,
   createBriefingHtml,
   createBriefingText,

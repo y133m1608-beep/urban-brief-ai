@@ -11,7 +11,7 @@ h1 { font-size: clamp(44px, 6vw, 72px); margin: 18px 0 14px; letter-spacing: -.0
 .hero p { max-width: 760px; line-height: 1.75; color: #5b6472; margin: 0; }
 .hero-card { background: #111827; color: #fff; border-radius: 28px; padding: 26px; display: flex; flex-direction: column; justify-content: center; }
 .hero-card span { color: #cbd5e1; font-size: 14px; font-weight: 700; }
-.hero-card strong { display: block; font-size: 40px; margin: 10px 0; }
+.hero-card strong { display: block; font-size: 34px; margin: 10px 0; }
 .hero-card p { color: #d1d5db; font-size: 14px; line-height: 1.7; }
 .hero-card button, .keyword-row button, .mail-button, .sub-actions button { border: 0; border-radius: 18px; padding: 12px 14px; font-weight: 800; }
 .hero-card button { margin-top: 22px; background: #fff; color: #111827; }
@@ -49,8 +49,9 @@ textarea { min-height: 84px; resize: vertical; }
 .briefing-head span { color: #6b7280; font-size: 14px; font-weight: 700; }
 .block { padding: 28px 0 0; }
 .news-list { display: flex; flex-direction: column; gap: 14px; }
-.news-card { display: block; text-decoration: none; color: inherit; border: 1px solid #eef2f7; background: #f8fafc; border-radius: 24px; padding: 20px; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.news-card { display: block; text-decoration: none; color: inherit; border: 1px solid #eef2f7; background: #f8fafc; border-radius: 24px; padding: 20px; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; width: 100%; text-align: left; }
 .news-card:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(15,23,42,.09); border-color: #cbd5e1; }
+.news-card.as-button { appearance: none; }
 .news-top, .news-bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .news-top span { display: inline-flex; background: #fff; color: #475569; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 800; }
 .news-top em { color: #94a3b8; font-style: normal; font-size: 12px; font-weight: 800; }
@@ -67,5 +68,20 @@ textarea { min-height: 84px; resize: vertical; }
 .question { margin-top: 30px; background: #f1f5f9; border-radius: 26px; padding: 24px; }
 .question strong { display: block; margin-bottom: 8px; }
 .question p { margin: 0; line-height: 1.78; color: #374151; }
+
+.drawer-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(15,23,42,.42); display: flex; justify-content: flex-end; padding: 20px; }
+.drawer { width: min(560px, 100%); height: 100%; overflow-y: auto; background: #fff; border-radius: 28px; padding: 24px; box-shadow: 0 30px 80px rgba(15,23,42,.25); }
+.drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid #e5e7eb; }
+.drawer-head span { color: #64748b; font-size: 13px; font-weight: 800; }
+.drawer-head h2 { margin: 6px 0 0; letter-spacing: -.03em; }
+.drawer-head button { border: 0; background: #111827; color: #fff; border-radius: 999px; padding: 9px 14px; font-weight: 800; }
+.drawer-desc { color: #64748b; line-height: 1.7; font-size: 14px; }
+.drawer-list { display: flex; flex-direction: column; gap: 12px; }
+.drawer-article { display: block; text-decoration: none; color: inherit; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 22px; padding: 18px; }
+.drawer-article:hover { border-color: #cbd5e1; }
+.drawer-article h3 { margin: 12px 0 8px; font-size: 16px; line-height: 1.45; }
+.drawer-article p { color: #5b6472; font-size: 14px; line-height: 1.7; margin: 0 0 12px; }
+.drawer-article strong { font-size: 13px; }
+
 @media (max-width: 980px) { .hero, .layout, .impact-grid { grid-template-columns: 1fr; } .briefing-head { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 560px) { .page { width: min(100% - 20px, 1240px); padding-top: 16px; } .hero, .panel, .briefing { border-radius: 24px; padding: 20px; } .news-bottom { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 560px) { .page { width: min(100% - 20px, 1240px); padding-top: 16px; } .hero, .panel, .briefing { border-radius: 24px; padding: 20px; } .news-bottom { align-items: flex-start; flex-direction: column; } .drawer-backdrop { padding: 10px; } .drawer { border-radius: 22px; } }
