@@ -1,23 +1,21 @@
-# Urban Brief AI v4 - Live Naver News
+# Urban Brief AI v5 - Keyword Filtered
 
 ## 변경 내용
-- 네이버 뉴스 검색 API로 최신 뉴스 자동 수집
-- 뉴스 카드 클릭 시 검색결과가 아니라 기사 원문 URL(originallink)로 이동
-- 메일 발송 및 매일 오전 8시 자동 발송도 최신 뉴스 기반으로 변경
+- 사용자가 웹사이트에서 입력한 관심 키워드가 즉시 뉴스 검색에 적용됩니다.
+- 키워드 추가/삭제 시 뉴스가 다시 업데이트됩니다.
+- 네이버 API 검색어에 `건축`, `도시`, `공간`, `정책` 조건을 함께 적용해 관련 없는 연예/잡뉴스를 줄였습니다.
+- 뉴스 카드는 기사 원문 URL로 이동합니다.
 
-## 필수 Vercel Environment Variables
+## 주의
+웹사이트에서 입력한 키워드는 현재 브라우저 화면과 수동 메일 발송에는 바로 적용됩니다.
+매일 오전 8시 자동 메일은 브라우저가 꺼져 있어도 실행되어야 하므로 Vercel Environment Variable의 KEYWORDS 값을 사용합니다.
+
+## Vercel Environment Variables
+필수:
 - RESEND_API_KEY
 - RECIPIENT_EMAIL
 - NAVER_CLIENT_ID
 - NAVER_CLIENT_SECRET
 
-## 선택 Environment Variables
-- FROM_EMAIL
-- PROJECT_NAME
-- KEYWORDS
-
-## 네이버 API 신청
-Naver Developers에서 Search API 사용 애플리케이션을 만들고 Client ID / Client Secret을 발급받아야 합니다.
-
-## Cron
-vercel.json의 0 23 * * *는 UTC 기준 23:00이며, 한국 시간 오전 8시입니다.
+자동 메일 키워드를 바꾸려면:
+- KEYWORDS = 도시재생,전통시장,공중가로,물류,주거,기후대응,공공공간

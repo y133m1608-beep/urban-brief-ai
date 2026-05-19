@@ -1,6 +1,6 @@
 
 const { Resend } = require("resend");
-const { createBriefingHtml, createBriefingText, fetchNaverNews } = require("./briefing");
+const { createBriefingHtml, createBriefingText, fetchNaverNews, defaultKeywords } = require("./briefing");
 
 module.exports = async function handler(req, res) {
   try {
@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
     if (!recipient) return res.status(500).json({ error: "RECIPIENT_EMAIL이 설정되지 않았습니다." });
 
     const project = process.env.PROJECT_NAME || "남대문시장 C·D동 리노베이션";
-    const keywords = (process.env.KEYWORDS || "도시재생,전통시장,공중가로,물류,주거,기후대응,공공공간")
+    const keywords = (process.env.KEYWORDS || defaultKeywords.join(","))
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
       text: createBriefingText({ project, keywords, newsItems })
     });
 
-    return res.status(200).json({ ok: true, message: "scheduled email sent", result, newsItems });
+    return res.status(200).json({ ok: true, message: "scheduled email sent", result, newsItems, appliedKeywords: keywords });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Cron 메일 발송 중 오류가 발생했습니다." });
   }

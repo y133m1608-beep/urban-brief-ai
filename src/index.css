@@ -13,7 +13,7 @@ h1 { font-size: clamp(44px, 6vw, 72px); margin: 18px 0 14px; letter-spacing: -.0
 .hero-card span { color: #cbd5e1; font-size: 14px; font-weight: 700; }
 .hero-card strong { display: block; font-size: 40px; margin: 10px 0; }
 .hero-card p { color: #d1d5db; font-size: 14px; line-height: 1.7; }
-.hero-card button, .keyword-row button, .mail-button { border: 0; border-radius: 18px; padding: 12px 14px; font-weight: 800; }
+.hero-card button, .keyword-row button, .mail-button, .sub-actions button { border: 0; border-radius: 18px; padding: 12px 14px; font-weight: 800; }
 .hero-card button { margin-top: 22px; background: #fff; color: #111827; }
 .layout { display: grid; grid-template-columns: .85fr 1.45fr; gap: 24px; margin-top: 24px; }
 .sidebar { display: flex; flex-direction: column; gap: 24px; }
@@ -25,11 +25,13 @@ label { display: block; margin: 16px 0 8px; font-size: 13px; font-weight: 800; }
 input, textarea { width: 100%; border: 1px solid #e5e7eb; background: #f8fafc; border-radius: 16px; padding: 13px 14px; outline: none; }
 textarea { min-height: 92px; resize: vertical; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chips.big { gap: 10px; }
-.chip { display: inline-flex; align-items: center; border-radius: 999px; background: #f1f5f9; color: #475569; padding: 7px 10px; font-size: 12px; font-weight: 800; }
+.chip { display: inline-flex; align-items: center; border: 0; border-radius: 999px; background: #f1f5f9; color: #475569; padding: 7px 10px; font-size: 12px; font-weight: 800; }
 .chip.dark { background: #111827; color: #fff; }
+.chip.removable:hover { background: #334155; }
 .keyword-row { display: grid; grid-template-columns: 1fr 74px; gap: 8px; margin-top: 14px; }
-.keyword-row button, .mail-button { background: #111827; color: #fff; }
+.keyword-row button, .mail-button, .sub-actions button:first-child { background: #111827; color: #fff; }
+.sub-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.sub-actions button:last-child { background: #f1f5f9; color: #111827; }
 .mail-button { width: 100%; margin-top: 18px; }
 .notice { margin: 12px 0 0; color: #0f172a; font-size: 13px; line-height: 1.6; font-weight: 700; }
 .small-info { margin-top: 14px; padding: 16px; background: #f8fafc; border-radius: 18px; }
