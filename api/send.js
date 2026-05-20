@@ -1,6 +1,6 @@
 
 const { Resend } = require("resend");
-const { createBriefingHtml, createBriefingText, fetchNewsByCategory, generateArchitecturalImpacts } = require("./briefing");
+const { createBriefingHtml, createBriefingText, fetchNewsByCategory, generateArchitecturalImpacts, generateArchitectureKeywords } = require("./briefing");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST 요청만 가능합니다." });
@@ -12,7 +12,9 @@ module.exports = async function handler(req, res) {
 
     const groupedNews = await fetchNewsByCategory({ categories, perCategory: 5, refresh: Date.now() });
     const newsItems = groupedNews.map((group) => group.representative);
+    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
     const impacts = await generateArchitecturalImpacts({ newsItems });
+    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 
@@ -24,7 +26,7 @@ module.exports = async function handler(req, res) {
       text: createBriefingText({ project, keywords, categories, newsItems })
     });
 
-    return res.status(200).json({ ok: true, result, groupedNews, newsItems, impacts });
+    return res.status(200).json({ ok: true, result, groupedNews, newsItems, impacts, architectureKeywords });
   } catch (error) {
     return res.status(500).json({ error: error.message || "메일 발송 중 오류가 발생했습니다." });
   }

@@ -1,5 +1,5 @@
 
-const { fetchNewsByCategory, generateArchitecturalQuestion, generateArchitecturalImpacts, generateCommonFlow } = require("./briefing");
+const { fetchNewsByCategory, generateArchitecturalQuestion, generateArchitecturalImpacts, generateCommonFlow, generateArchitectureKeywords } = require("./briefing");
 
 module.exports = async function handler(req, res) {
   try {
@@ -13,9 +13,11 @@ module.exports = async function handler(req, res) {
     const refresh = String(req.query.refresh || Date.now());
     const groupedNews = await fetchNewsByCategory({ categories, perCategory: 5, refresh });
     const newsItems = groupedNews.map((group) => group.representative);
+    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
     const question = await generateArchitecturalQuestion({ newsItems });
     const impacts = await generateArchitecturalImpacts({ newsItems });
     const commonFlow = await generateCommonFlow({ newsItems });
+    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
 
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.status(200).json({
@@ -25,6 +27,7 @@ module.exports = async function handler(req, res) {
       question,
       impacts,
       commonFlow,
+      architectureKeywords,
       appliedCategories: categories,
       updatedAt: new Date().toISOString()
     });

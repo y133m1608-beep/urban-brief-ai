@@ -77,7 +77,8 @@ function normalizeNaverItem(item, categoryName, keyword, query) {
     url: item.originallink || item.link,
     naverUrl: item.link,
     publishedAt: item.pubDate || "",
-    tags: [categoryName, keyword, "건축해석"].filter(Boolean).slice(0, 3),
+    tags: [categoryName, keyword, "국내 보도"].filter(Boolean).slice(0, 3),
+    source: "국내 보도",
     query
   };
 }
@@ -128,26 +129,34 @@ function normalizeGNewsItem(item, categoryName = "국제 / 정세", keyword = "�
     url: item.url,
     naverUrl: item.url,
     publishedAt: item.publishedAt || "",
-    tags: [categoryName, keyword, "해외뉴스"].filter(Boolean).slice(0, 3),
+    tags: [categoryName, "해외 원문", keyword].filter(Boolean).slice(0, 3),
     query: keyword,
-    source: item.source?.name || "Global News"
+    source: item.source?.name ? `해외 원문 · ${item.source.name}` : "해외 원문"
   };
 }
 
 async function fetchGNewsForWorldAffairs({ category, limit = 5, refresh = "" } = {}) {
   const apiKey = process.env.GNEWS_API_KEY;
-  if (!apiKey) return [];
+
+  // GNews API key가 아니라 Resend/OpenAI 키가 잘못 들어간 경우 호출하지 않음
+  if (!apiKey || apiKey.startsWith("sk_") || apiKey.startsWith("re_")) return [];
 
   const categoryName = category?.name || "국제 / 정세";
   const keyword = "세계정세";
-  const query = encodeURIComponent('(geopolitics OR "global economy" OR energy OR "supply chain" OR "climate diplomacy" OR election OR conflict)');
+
+  const query = encodeURIComponent(
+    '(geopolitics OR "global economy" OR energy OR oil OR "supply chain" OR "climate diplomacy" OR election OR conflict OR "China economy")'
+  );
+
   const url = `https://gnews.io/api/v4/search?q=${query}&lang=en&max=${Math.min(Math.max(limit, 1), 10)}&apikey=${apiKey}${refresh ? `&t=${refresh}` : ""}`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) return [];
+
     const data = await response.json();
     const articles = Array.isArray(data.articles) ? data.articles : [];
+
     return articles
       .map((item) => normalizeGNewsItem(item, categoryName, keyword))
       .filter((item) => item.title && item.url)
@@ -196,7 +205,7 @@ async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = 
         const normalized = normalizeNaverItem(item, categoryName, matchedKeyword, query);
         const key = normalized.url || normalized.title;
         if (!key || seen.has(key)) continue;
-        if (!isRelevant(normalized, matchedKeyword)) continue;
+        if (categoryName !== "국제 / 정세" && !isRelevant(normalized, matchedKeyword)) continue;
 
         seen.add(key);
         results.push(normalized);
@@ -219,10 +228,18 @@ async function fetchNewsByCategory({ categories = defaultCategories, perCategory
     let rawArticles = [];
 
     if (category.name === "국제 / 정세") {
-      rawArticles = await fetchGNewsForWorldAffairs({ category, limit: perCategory + 8, refresh });
-    }
+      const domesticWorldNews = await fetchArticlesForCategory({ category, limit: perCategory + 6, refresh });
+      const overseasWorldNews = await fetchGNewsForWorldAffairs({ category, limit: perCategory + 6, refresh });
 
-    if (!rawArticles.length) {
+      // 국내에서 발행한 국제정세 기사와 해외 원문 뉴스를 함께 섞어서 표시
+      const mixed = [];
+      const maxLen = Math.max(domesticWorldNews.length, overseasWorldNews.length);
+      for (let i = 0; i < maxLen; i += 1) {
+        if (domesticWorldNews[i]) mixed.push(domesticWorldNews[i]);
+        if (overseasWorldNews[i]) mixed.push(overseasWorldNews[i]);
+      }
+      rawArticles = mixed;
+    } else {
       rawArticles = await fetchArticlesForCategory({ category, limit: perCategory + 8, refresh });
     }
 
@@ -263,7 +280,9 @@ function getFallbackArticle(category) {
     category: category.name,
     keyword: category.keywords?.[0] || category.name,
     title: `${category.name} 분야 최신 뉴스가 부족하여 기본 브리핑 항목을 표시합니다`,
-    summary: "현재 분야와 정확히 맞는 최신 뉴스가 부족합니다. 키워드를 더 넓게 조정하거나, 네이버 뉴스 API 환경변수를 확인하세요.",
+    summary: category.name === "국제 / 정세"
+      ? "국내 국제정세 기사와 해외 원문 뉴스를 함께 찾지 못했습니다. GNEWS_API_KEY가 올바른 GNews 키인지, 그리고 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET이 설정되어 있는지 확인하세요."
+      : "현재 분야와 정확히 맞는 최신 뉴스가 부족합니다. 키워드를 더 넓게 조정하거나, 네이버 뉴스 API 환경변수를 확인하세요.",
     url: "https://news.naver.com/",
     publishedAt: "",
     tags: [category.name, category.keywords?.[0] || "뉴스", "건축해석"].filter(Boolean)
@@ -631,6 +650,97 @@ ${JSON.stringify(compactNews, null, 2)}
   }
 }
 
+
+function createFallbackArchitectureKeywords(newsItems = []) {
+  const text = newsItems.map((item) => `${item.category} ${item.keyword || ""} ${item.title} ${item.summary}`).join(" ");
+
+  if (text.includes("국제분쟁") || text.includes("에너지") || text.includes("공급망") || text.includes("세계경제") || text.includes("중국") || text.includes("미국") || text.includes("원자재")) {
+    return ["건설비", "자재 수급", "에너지 인프라", "공급망 리스크", "도시 회복탄력성", "공공사업 리스크", "운영비"];
+  }
+
+  if (text.includes("기후") || text.includes("폭염") || text.includes("재난") || text.includes("침수")) {
+    return ["기후 대응", "재난 안전", "그린 인프라", "반외부공간", "물순환", "차열·차양", "도시 회복탄력성"];
+  }
+
+  if (text.includes("고령") || text.includes("1인가구") || text.includes("저출산") || text.includes("인구") || text.includes("돌봄")) {
+    return ["생활 인프라", "돌봄 주거", "근린 공공시설", "소형 주거", "공유공간", "무장애 설계", "생활권 복합화"];
+  }
+
+  if (text.includes("상권") || text.includes("시장") || text.includes("소비") || text.includes("관광") || text.includes("지역")) {
+    return ["복합 상업공간", "체류형 리테일", "지역성", "도심 물류", "관광 거점", "경험 공간", "리노베이션"];
+  }
+
+  if (text.includes("AI") || text.includes("기술") || text.includes("물류") || text.includes("산업")) {
+    return ["스마트 인프라", "도심 물류", "가변 공간", "운영 시스템", "데이터 기반 도시", "자동화 공간", "플랫폼 건축"];
+  }
+
+  return ["복합 프로그램", "생활 인프라", "공공공간", "도시재생", "보행환경", "리노베이션", "기후 대응"];
+}
+
+async function generateArchitectureKeywords({ newsItems = [] } = {}) {
+  const fallback = createFallbackArchitectureKeywords(newsItems);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return fallback;
+  }
+
+  try {
+    const compactNews = newsItems.slice(0, 8).map((item, index) => ({
+      index: index + 1,
+      category: item.category,
+      keyword: item.keyword,
+      title: item.title,
+      summary: item.summary
+    }));
+
+    const prompt = `
+너는 건축 시사 브리핑 에이전트다.
+아래 오늘의 뉴스들을 종합해 "오늘의 건축 키워드"를 7개 추출하라.
+
+조건:
+- 일반적인 건축 용어만 나열하지 말고 오늘 뉴스의 흐름을 반영할 것.
+- 키워드는 건축, 도시공간, 프로그램, 주거, 공공공간, 상업공간, 인프라, 시공/자재, 에너지/기후와 연결될 것.
+- 각 키워드는 2~8글자 또는 짧은 명사구로 작성할 것.
+- 결과는 JSON 배열만 출력할 것. 예: ["건설비", "자재 수급", "에너지 인프라"]
+
+뉴스:
+${JSON.stringify(compactNews, null, 2)}
+`;
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        input: prompt
+      })
+    });
+
+    if (!response.ok) return fallback;
+
+    const data = await response.json();
+    const outputText =
+      data.output_text ||
+      (Array.isArray(data.output)
+        ? data.output.flatMap((part) => part.content || []).map((content) => content.text || "").join("")
+        : "");
+
+    const cleaned = String(outputText || "").trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (Array.isArray(parsed) && parsed.length) {
+      return parsed.slice(0, 8).map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    return fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
 module.exports = {
   defaultCategories,
   defaultKeywords,
@@ -647,5 +757,7 @@ module.exports = {
   generateArchitecturalImpacts,
   createFallbackCommonFlow,
   generateCommonFlow,
-  fetchGNewsForWorldAffairs
+  fetchGNewsForWorldAffairs,
+  createFallbackArchitectureKeywords,
+  generateArchitectureKeywords
 };

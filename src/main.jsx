@@ -14,18 +14,14 @@ const defaultCategories = [
   { name: "국제 / 정세", keywords: ["국제분쟁", "에너지", "세계경제", "공급망", "기후외교", "미국대선", "중국경제"] }
 ];
 
-const architectureKeywords = [
+const defaultArchitectureKeywords = [
   "복합 프로그램",
   "생활 인프라",
-  "반외부공간",
+  "공공공간",
   "도시재생",
   "보행환경",
-  "도심 물류",
-  "공공공간",
   "리노베이션",
-  "기후 대응",
-  "건설비·자재",
-  "에너지 인프라"
+  "기후 대응"
 ];
 
 function flattenKeywords(categories) {
@@ -46,7 +42,7 @@ function ArticleDrawer({ group, onClose }) {
           <button onClick={onClose}>닫기</button>
         </div>
         <p className="drawer-desc">
-          대표 기사 외에 같은 분야에서 함께 수집된 기사들입니다. 기사를 누르면 원문으로 이동합니다.
+          대표 기사 외에 같은 분야에서 함께 수집된 기사들입니다. 국제/정세 분야는 국내 보도와 해외 원문을 함께 보여줍니다.
         </p>
         <div className="drawer-list">
           {group.articles.map((article, index) => (
@@ -85,6 +81,7 @@ function App() {
   const [updatedAt, setUpdatedAt] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [architectureKeywords, setArchitectureKeywords] = useState(defaultArchitectureKeywords);
   const [architecturalQuestion, setArchitecturalQuestion] = useState("{architecturalQuestion}");
 
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
@@ -123,6 +120,7 @@ function App() {
       if (data.question) setArchitecturalQuestion(data.question);
       if (data.impacts) setArchitecturalImpacts(data.impacts);
       if (data.commonFlow) setCommonFlow(data.commonFlow);
+      if (data.architectureKeywords) setArchitectureKeywords(data.architectureKeywords);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
       setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
@@ -188,6 +186,7 @@ function App() {
       if (!response.ok) throw new Error(data.error || "메일 발송에 실패했습니다.");
       if (data.groupedNews) setGroupedNews(data.groupedNews);
       if (data.impacts) setArchitecturalImpacts(data.impacts);
+      if (data.architectureKeywords) setArchitectureKeywords(data.architectureKeywords);
       setStatus("메일이 전송되었습니다. 받은 편지함 또는 스팸함을 확인하세요.");
     } catch (error) {
       setStatus(error.message || "메일 발송 중 오류가 발생했습니다.");
@@ -214,7 +213,7 @@ function App() {
         <div className="hero-card">
           <span>오늘 생성된 브리핑</span>
           <strong>{newsItems.length || 0}개 대표 뉴스</strong>
-          <p>각 분야의 대표 기사를 누르면 같은 분야의 관련 기사 목록을 볼 수 있습니다.</p>
+          <p>각 분야의 대표 기사를 누르면 관련 기사 목록을 볼 수 있습니다. 국제/정세는 국내 보도와 해외 원문을 함께 보여줍니다.</p>
           <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>
             {isLoadingNews ? "업데이트 중..." : "최신 뉴스 업데이트"}
           </button>
@@ -325,7 +324,7 @@ function App() {
 
           <section className="block">
             <h3>4. 오늘의 건축 키워드</h3>
-            <p className="sub">뉴스를 건축적으로 읽기 위해 추출한 공간·프로그램 중심 키워드입니다.</p>
+            <p className="sub">오늘 수집된 뉴스 흐름을 건축적으로 읽기 위해 AI가 추출한 공간·프로그램 중심 키워드입니다.</p>
             <div className="chips big">
               {architectureKeywords.map((keyword) => (
                 <span className="chip dark" key={keyword}>{keyword}</span>
