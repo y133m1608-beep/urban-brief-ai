@@ -66,11 +66,8 @@
 - 건축적 해석 방향: 공사비, 자재 수급, 에너지 비용, 인프라 투자, 도시정책, 부동산 시장, 기후 대응 기준 변화
 
 
-## v17 추가 기능: 해외 뉴스 API 연결
-- `국제 / 정세` 분야는 GNEWS_API_KEY가 있으면 GNews API의 영문 해외 뉴스를 우선 사용합니다.
-- 검색 흐름: geopolitics, global economy, energy, supply chain, climate diplomacy, election, conflict
-- GNEWS_API_KEY가 없거나 호출이 실패하면 기존처럼 네이버 뉴스 API로 대체됩니다.
-
-## 추가 Vercel Environment Variable
-선택:
-- GNEWS_API_KEY = GNews에서 발급받은 API Key
+## v18 수정 내용
+- v17에서 국제/정세 뉴스 로딩이 멈추던 코드 오류를 수정했습니다.
+- `국제 / 정세` 분야는 GNEWS_API_KEY가 있으면 GNews 해외 뉴스를 우선 사용합니다.
+- GNEWS_API_KEY가 없거나 실패하면 기존 네이버 뉴스 API로 대체됩니다.
+- 추가 환경변수: GNEWS_API_KEY

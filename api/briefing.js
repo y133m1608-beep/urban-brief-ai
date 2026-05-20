@@ -58,8 +58,7 @@ function rememberArticle(article = {}, globalSeen = new Set()) {
   keys.forEach((key) => globalSeen.add(key));
 }
 
-function stripHtml,
-  fetchGNewsForWorldAffairs(value = "") {
+function stripHtml(value = "") {
   return String(value)
     .replace(/<[^>]*>/g, "")
     .replace(/&quot;/g, '"')
@@ -119,6 +118,45 @@ function createCategoryQueries(category) {
   };
 }
 
+
+function normalizeGNewsItem(item, categoryName = "국제 / 정세", keyword = "세계정세") {
+  return {
+    category: categoryName,
+    keyword,
+    title: stripHtml(item.title || ""),
+    summary: stripHtml(item.description || item.content || ""),
+    url: item.url,
+    naverUrl: item.url,
+    publishedAt: item.publishedAt || "",
+    tags: [categoryName, keyword, "해외뉴스"].filter(Boolean).slice(0, 3),
+    query: keyword,
+    source: item.source?.name || "Global News"
+  };
+}
+
+async function fetchGNewsForWorldAffairs({ category, limit = 5, refresh = "" } = {}) {
+  const apiKey = process.env.GNEWS_API_KEY;
+  if (!apiKey) return [];
+
+  const categoryName = category?.name || "국제 / 정세";
+  const keyword = "세계정세";
+  const query = encodeURIComponent('(geopolitics OR "global economy" OR energy OR "supply chain" OR "climate diplomacy" OR election OR conflict)');
+  const url = `https://gnews.io/api/v4/search?q=${query}&lang=en&max=${Math.min(Math.max(limit, 1), 10)}&apikey=${apiKey}${refresh ? `&t=${refresh}` : ""}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+    const articles = Array.isArray(data.articles) ? data.articles : [];
+    return articles
+      .map((item) => normalizeGNewsItem(item, categoryName, keyword))
+      .filter((item) => item.title && item.url)
+      .slice(0, limit);
+  } catch (error) {
+    return [];
+  }
+}
+
 async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = {}) {
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
@@ -170,48 +208,6 @@ async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = 
   }
 
   return results;
-}
-
-
-function normalizeGNewsItem(item, categoryName = "국제 / 정세", keyword = "세계정세") {
-  return {
-    category: categoryName,
-    keyword,
-    title: stripHtml(item.title || ""),
-    summary: stripHtml(item.description || item.content || ""),
-    url: item.url,
-    naverUrl: item.url,
-    publishedAt: item.publishedAt || "",
-    tags: [categoryName, keyword, "해외뉴스"].filter(Boolean).slice(0, 3),
-    query: keyword,
-    source: item.source?.name || "Global News"
-  };
-}
-
-async function fetchGNewsForWorldAffairs({ category, limit = 5, refresh = "" } = {}) {
-  const apiKey = process.env.GNEWS_API_KEY;
-  if (!apiKey) return [];
-
-  const categoryName = category?.name || "국제 / 정세";
-  const keyword = "세계정세";
-  const query = encodeURIComponent('(geopolitics OR "global economy" OR energy OR "supply chain" OR "climate diplomacy" OR election OR conflict)');
-
-  const url = `https://gnews.io/api/v4/search?q=${query}&lang=en&max=${Math.min(Math.max(limit, 1), 10)}&apikey=${apiKey}${refresh ? `&t=${refresh}` : ""}`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const articles = Array.isArray(data.articles) ? data.articles : [];
-
-    return articles
-      .map((item) => normalizeGNewsItem(item, categoryName, keyword))
-      .filter((item) => item.title && item.url)
-      .slice(0, limit);
-  } catch (error) {
-    return [];
-  }
 }
 
 async function fetchNewsByCategory({ categories = defaultCategories, perCategory = 5, refresh = "" } = {}) {
