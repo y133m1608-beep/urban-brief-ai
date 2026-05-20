@@ -10,7 +10,8 @@ const defaultCategories = [
   { name: "도시 / 지역", keywords: ["도시재생", "교통인프라"] },
   { name: "환경 / 기후", keywords: ["기후위기", "재난대응"] },
   { name: "기술 / 산업", keywords: ["AI", "도심물류"] },
-  { name: "문화 / 생활", keywords: ["관광", "소비트렌드"] }
+  { name: "문화 / 생활", keywords: ["관광", "소비트렌드"] },
+  { name: "국제 / 정세", keywords: ["국제분쟁", "에너지", "세계경제", "공급망", "기후외교", "미국대선", "중국경제"] }
 ];
 
 const architectureKeywords = [
@@ -22,7 +23,9 @@ const architectureKeywords = [
   "도심 물류",
   "공공공간",
   "리노베이션",
-  "기후 대응"
+  "기후 대응",
+  "건설비·자재",
+  "에너지 인프라"
 ];
 
 function flattenKeywords(categories) {
@@ -88,8 +91,7 @@ function App() {
 
   const newsItems = groupedNews.map((group) => group.representative).filter(Boolean);
 
-  const commonFlow =
-    "오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다. 건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.";
+  const [commonFlow, setCommonFlow] = useState("오늘 뉴스 흐름을 바탕으로 공통 흐름을 분석하는 중입니다.");
 
   const [architecturalImpacts, setArchitecturalImpacts] = useState([
     "오늘 뉴스 흐름을 바탕으로 건축 분야에 미칠 영향을 분석하는 중입니다.",
@@ -106,7 +108,7 @@ function App() {
     const refresh = Date.now();
 
     setIsLoadingNews(true);
-    setStatus("7개 분야에서 대표 기사와 관련 기사 목록을 불러오는 중입니다...");
+    setStatus("8개 분야에서 대표 기사와 관련 기사 목록을 불러오는 중입니다...");
 
     try {
       const categoryParam = encodeURIComponent(JSON.stringify(nextCategories));
@@ -120,6 +122,7 @@ function App() {
       setGroupedNews(data.groupedNews || []);
       if (data.question) setArchitecturalQuestion(data.question);
       if (data.impacts) setArchitecturalImpacts(data.impacts);
+      if (data.commonFlow) setCommonFlow(data.commonFlow);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
       setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
@@ -173,7 +176,7 @@ function App() {
     }
 
     setIsSending(true);
-    setStatus("7개 분야 뉴스로 메일을 보내는 중입니다...");
+    setStatus("8개 분야 뉴스로 메일을 보내는 중입니다...");
 
     try {
       const response = await fetch("/api/send", {
@@ -201,10 +204,10 @@ function App() {
     <div className="page">
       <header className="hero">
         <div>
-          <div className="eyebrow">7개 분야 균형형 건축 시사 브리핑</div>
+          <div className="eyebrow">8개 분야 균형형 건축 시사 브리핑</div>
           <h1>Urban Brief AI</h1>
           <p>
-            정책·경제·사회·도시·환경·기술·문화 흐름을 균형 있게 읽고,
+            정책·경제·사회·도시·환경·기술·문화·국제정세 흐름을 균형 있게 읽고,
             대표 기사와 관련 기사 목록을 통해 사회 이슈를 건축적으로 해석하는 에이전트입니다.
           </p>
         </div>
@@ -222,7 +225,7 @@ function App() {
         <aside className="sidebar">
           <section className="panel">
             <h2>사용자 설정</h2>
-            <p className="sub">건축이 읽어야 할 사회 흐름을 7개 분야로 나누어 설정합니다.</p>
+            <p className="sub">건축이 읽어야 할 사회 흐름을 8개 분야로 나누어 설정합니다.</p>
             <label>수신 이메일</label>
             <input value={email} placeholder="실제 받을 이메일을 입력하세요" onChange={(e) => setEmail(e.target.value)} />
             <label>브리핑 주제</label>

@@ -6,7 +6,8 @@ const defaultCategories = [
   { name: "도시 / 지역", keywords: ["도시재생", "교통인프라"] },
   { name: "환경 / 기후", keywords: ["기후위기", "재난대응"] },
   { name: "기술 / 산업", keywords: ["AI", "도심물류"] },
-  { name: "문화 / 생활", keywords: ["관광", "소비트렌드"] }
+  { name: "문화 / 생활", keywords: ["관광", "소비트렌드"] },
+  { name: "국제 / 정세", keywords: ["국제분쟁", "에너지", "세계경제", "공급망", "기후외교", "미국대선", "중국경제"] }
 ];
 
 const defaultKeywords = defaultCategories.flatMap((category) => category.keywords);
@@ -27,7 +28,7 @@ const architectureWords = [
   "건축", "도시", "공간", "주거", "상업", "상권", "시장", "개발", "재생",
   "정비", "보행", "도로", "공원", "시설", "인프라", "물류", "기후", "환경",
   "계획", "설계", "재개발", "재건축", "복합", "건물", "건설", "도심", "정책",
-  "교통", "관광", "인구", "고령", "부동산", "재난", "AI", "기술"
+  "교통", "관광", "인구", "고령", "부동산", "재난", "AI", "기술", "국제", "해외", "글로벌", "스마트시티", "국제분쟁", "에너지", "미국", "정치", "세계경제", "지정학", "에너지", "공급망", "메가시티"
 ];
 
 
@@ -175,7 +176,7 @@ async function fetchNewsByCategory({ categories = defaultCategories, perCategory
   const grouped = [];
   const globalSeen = new Set();
 
-  for (const category of selected.slice(0, 7)) {
+  for (const category of selected.slice(0, 8)) {
     const rawArticles = await fetchArticlesForCategory({ category, limit: perCategory + 8, refresh });
 
     const uniqueArticles = [];
@@ -224,7 +225,7 @@ function getFallbackArticle(category) {
 
 function getFallbackNews({ categories = defaultCategories } = {}) {
   const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
-  return selected.slice(0, 7).map((category) => getFallbackArticle(category));
+  return selected.slice(0, 8).map((category) => getFallbackArticle(category));
 }
 
 function formatDate(dateValue) {
@@ -319,7 +320,7 @@ function createFallbackQuestion(newsItems = []) {
     return "소비와 지역상권의 변화 속에서 상업공간은 판매를 넘어 체류, 경험, 지역성을 어떻게 담아야 할까?";
   }
 
-  if (text.includes("AI") || text.includes("기술") || text.includes("물류")) {
+  if (text.includes("AI") || text.includes("기술", "국제", "해외", "글로벌", "스마트시티", "국제분쟁", "에너지", "미국", "정치", "세계경제", "지정학", "에너지", "공급망", "메가시티") || text.includes("물류")) {
     return "기술과 산업 구조가 바뀌는 상황에서 건축은 보이지 않는 데이터·물류·운영 시스템을 어떤 공간 구조로 드러낼 수 있을까?";
   }
 
@@ -334,7 +335,7 @@ async function generateArchitecturalQuestion({ newsItems = [] } = {}) {
   }
 
   try {
-    const compactNews = newsItems.slice(0, 7).map((item, index) => ({
+    const compactNews = newsItems.slice(0, 8).map((item, index) => ({
       index: index + 1,
       category: item.category,
       keyword: item.keyword,
@@ -419,7 +420,7 @@ function createFallbackImpacts(newsItems = []) {
     ];
   }
 
-  if (text.includes("AI") || text.includes("기술") || text.includes("물류") || text.includes("산업")) {
+  if (text.includes("AI") || text.includes("기술", "국제", "해외", "글로벌", "스마트시티", "국제분쟁", "에너지", "미국", "정치", "세계경제", "지정학", "에너지", "공급망", "메가시티") || text.includes("물류") || text.includes("산업")) {
     return [
       "오늘 뉴스는 기술과 산업 구조의 변화가 건축의 운영 방식과 공간 구성에 직접 영향을 주고 있음을 보여준다.",
       "AI, 물류, 자동화 기술은 보이지 않는 시스템이지만, 건축에서는 동선, 저장, 관리, 서비스 공간의 재편으로 나타날 수 있다.",
@@ -444,7 +445,7 @@ async function generateArchitecturalImpacts({ newsItems = [] } = {}) {
   }
 
   try {
-    const compactNews = newsItems.slice(0, 7).map((item, index) => ({
+    const compactNews = newsItems.slice(0, 8).map((item, index) => ({
       index: index + 1,
       category: item.category,
       keyword: item.keyword,
@@ -501,6 +502,88 @@ ${JSON.stringify(compactNews, null, 2)}
   }
 }
 
+
+function createFallbackCommonFlow(newsItems = []) {
+  const text = newsItems.map((item) => `${item.category} ${item.keyword || ""} ${item.title} ${item.summary}`).join(" ");
+
+  if (text.includes("기후") || text.includes("폭염") || text.includes("재난") || text.includes("침수")) {
+    return "오늘의 뉴스들은 기후위기와 재난 대응이 더 이상 환경 분야에만 머무르지 않고, 주거·공공공간·도시 인프라 전반의 기본 조건으로 확장되고 있음을 보여준다.";
+  }
+
+  if (text.includes("고령") || text.includes("1인가구") || text.includes("저출산") || text.includes("인구") || text.includes("돌봄")) {
+    return "오늘의 뉴스들은 인구구조 변화가 단순한 사회 문제가 아니라, 주거 유형·생활권 시설·돌봄 인프라를 다시 구성해야 하는 공간적 문제로 이어지고 있음을 보여준다.";
+  }
+
+  if (text.includes("상권") || text.includes("시장") || text.includes("소비") || text.includes("관광") || text.includes("지역")) {
+    return "오늘의 뉴스들은 지역상권과 소비 방식의 변화가 판매 중심 공간을 넘어, 체류·경험·물류·관광이 결합된 복합적인 도시공간을 요구하고 있음을 보여준다.";
+  }
+
+  if (text.includes("AI") || text.includes("기술", "국제", "해외", "글로벌", "스마트시티", "국제분쟁", "에너지", "미국", "정치", "세계경제", "지정학", "에너지", "공급망", "메가시티") || text.includes("물류") || text.includes("산업")) {
+    return "오늘의 뉴스들은 기술과 산업 구조의 변화가 도시의 보이지 않는 운영 시스템을 바꾸고 있으며, 이는 건축에서 동선·저장·서비스·관리 공간의 재편으로 나타날 수 있음을 보여준다.";
+  }
+
+  return "오늘의 뉴스들은 서로 다른 분야의 사건처럼 보이지만, 공통적으로 도시 안에서 주거·상업·공공공간·인프라가 더 복합적으로 연결되어야 하는 흐름을 보여준다.";
+}
+
+async function generateCommonFlow({ newsItems = [] } = {}) {
+  const fallback = createFallbackCommonFlow(newsItems);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return fallback;
+  }
+
+  try {
+    const compactNews = newsItems.slice(0, 8).map((item, index) => ({
+      index: index + 1,
+      category: item.category,
+      keyword: item.keyword,
+      title: item.title,
+      summary: item.summary
+    }));
+
+    const prompt = `
+너는 건축 시사 브리핑 에이전트다.
+아래 오늘의 뉴스들을 종합해서 "오늘의 공통 흐름"을 한국어 문단 1개로 작성하라.
+
+조건:
+- 일반론 금지. 오늘 뉴스들의 실제 흐름을 반영할 것.
+- 뉴스 하나씩 나열하지 말고 전체를 관통하는 공통 흐름만 쓸 것.
+- 건축, 도시공간, 생활 인프라, 공공공간, 주거, 상업공간 중 하나 이상과 연결할 것.
+- 2문장 이내, 120자 이상 260자 이하.
+- 따옴표 없이 문단만 출력할 것.
+
+뉴스:
+${JSON.stringify(compactNews, null, 2)}
+`;
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        input: prompt
+      })
+    });
+
+    if (!response.ok) return fallback;
+
+    const data = await response.json();
+    const outputText =
+      data.output_text ||
+      (Array.isArray(data.output)
+        ? data.output.flatMap((part) => part.content || []).map((content) => content.text || "").join("")
+        : "");
+
+    const commonFlow = String(outputText || "").trim();
+    return commonFlow || fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
 module.exports = {
   defaultCategories,
   defaultKeywords,
@@ -514,5 +597,7 @@ module.exports = {
   createFallbackQuestion,
   generateArchitecturalQuestion,
   createFallbackImpacts,
-  generateArchitecturalImpacts
+  generateArchitecturalImpacts,
+  createFallbackCommonFlow,
+  generateCommonFlow
 };
