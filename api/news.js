@@ -17,7 +17,6 @@ module.exports = async function handler(req, res) {
     const question = await generateArchitecturalQuestion({ newsItems });
     const impacts = await generateArchitecturalImpacts({ newsItems });
     const commonFlow = await generateCommonFlow({ newsItems });
-    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
 
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.status(200).json({
