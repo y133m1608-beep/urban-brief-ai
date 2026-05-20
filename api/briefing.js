@@ -77,7 +77,7 @@ function normalizeNaverItem(item, categoryName, keyword, query) {
     url: item.originallink || item.link,
     naverUrl: item.link,
     publishedAt: item.pubDate || "",
-    tags: [categoryName, keyword, "국내 보도"].filter(Boolean).slice(0, 3),
+    tags: [categoryName, "최신", keyword].filter(Boolean).slice(0, 3),
     source: "국내 보도",
     query
   };
@@ -112,8 +112,10 @@ function createCategoryQueries(category) {
     categoryName: category.name,
     keywords,
     queries: [
-      `${keywordText} 도시 공간`,
+      `${keywordText}`,
+      `${keywordText} 최신`,
       `${keywordText} 정책 사회`,
+      `${keywordText} 도시 공간`,
       `${keywordText} 건축 도시`
     ]
   };
@@ -178,7 +180,7 @@ async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = 
   for (const query of queries) {
     const url = new URL("https://openapi.naver.com/v1/search/news.json");
     url.searchParams.set("query", query);
-    url.searchParams.set("display", "10");
+    url.searchParams.set("display", "20");
     url.searchParams.set("start", "1");
     url.searchParams.set("sort", "date");
     if (refresh) url.searchParams.set("_refresh", refresh);
@@ -205,8 +207,6 @@ async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = 
         const normalized = normalizeNaverItem(item, categoryName, matchedKeyword, query);
         const key = normalized.url || normalized.title;
         if (!key || seen.has(key)) continue;
-        if (categoryName !== "국제 / 정세" && !isRelevant(normalized, matchedKeyword)) continue;
-
         seen.add(key);
         results.push(normalized);
         if (results.length >= limit) return results;
@@ -282,7 +282,7 @@ function getFallbackArticle(category) {
     title: `${category.name} 분야 최신 뉴스가 부족하여 기본 브리핑 항목을 표시합니다`,
     summary: category.name === "국제 / 정세"
       ? "국내 국제정세 기사와 해외 원문 뉴스를 함께 찾지 못했습니다. GNEWS_API_KEY가 올바른 GNews 키인지, 그리고 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET이 설정되어 있는지 확인하세요."
-      : "현재 분야와 정확히 맞는 최신 뉴스가 부족합니다. 키워드를 더 넓게 조정하거나, 네이버 뉴스 API 환경변수를 확인하세요.",
+      : "최신순 검색 결과를 불러오지 못했습니다. 네이버 뉴스 API 환경변수 또는 키워드 설정을 확인하세요.",
     url: "https://news.naver.com/",
     publishedAt: "",
     tags: [category.name, category.keywords?.[0] || "뉴스", "건축해석"].filter(Boolean)

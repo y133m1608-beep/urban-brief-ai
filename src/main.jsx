@@ -28,6 +28,14 @@ function flattenKeywords(categories) {
   return categories.flatMap((category) => category.keywords).filter(Boolean);
 }
 
+
+function formatNewsDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 function ArticleDrawer({ group, onClose }) {
   if (!group) return null;
 
@@ -52,6 +60,7 @@ function ArticleDrawer({ group, onClose }) {
                 <em>{String(index + 1).padStart(2, "0")}</em>
               </div>
               <h3>{article.title}</h3>
+              <div className="news-meta">{article.source || "뉴스"}{formatNewsDate(article.publishedAt) ? ` · ${formatNewsDate(article.publishedAt)}` : ""}</div>
               <p>{article.summary}</p>
               <strong>기사 원문 열기 ↗</strong>
             </a>
@@ -105,7 +114,7 @@ function App() {
     const refresh = Date.now();
 
     setIsLoadingNews(true);
-    setStatus("8개 분야에서 대표 기사와 관련 기사 목록을 불러오는 중입니다...");
+    setStatus("8개 분야에서 최신 대표 기사와 관련 기사 목록을 불러오는 중입니다...");
 
     try {
       const categoryParam = encodeURIComponent(JSON.stringify(nextCategories));
@@ -123,7 +132,7 @@ function App() {
       if (data.architectureKeywords) setArchitectureKeywords(data.architectureKeywords);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
-      setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
+      setStatus("분야별 최신 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
     } catch (error) {
       setStatus(error.message || "뉴스 업데이트 중 오류가 발생했습니다.");
     } finally {
@@ -219,7 +228,7 @@ function App() {
         <div className="hero-card">
           <span>오늘 생성된 브리핑</span>
           <strong>{newsItems.length || 0}개 대표 뉴스</strong>
-          <p>각 분야의 대표 기사를 누르면 관련 기사 목록을 볼 수 있습니다. 국제/정세는 국내 보도와 해외 원문을 함께 보여줍니다.</p>
+          <p>각 분야의 최신 대표 기사를 누르면 관련 최신 기사 목록을 볼 수 있습니다. 국제/정세는 국내 보도와 해외 원문을 함께 보여줍니다.</p>
           <button onClick={() => loadNews(categories)} disabled={isLoadingNews}>
             {isLoadingNews ? "업데이트 중..." : "최신 뉴스 업데이트"}
           </button>
@@ -301,7 +310,7 @@ function App() {
 
           <section className="block">
             <h3>1. 오늘의 주요 뉴스</h3>
-            <p className="sub">각 카드는 분야별 대표 기사입니다. 카드를 누르면 같은 분야의 기사 목록이 열리고, 목록 안에서 기사 원문으로 이동할 수 있습니다.</p>
+            <p className="sub">각 카드는 분야별 최신 대표 기사입니다. 카드를 누르면 같은 분야의 최신 기사 목록이 열리고, 목록 안에서 기사 원문으로 이동할 수 있습니다.</p>
             <div className="news-list">
               {groupedNews.map((group, index) => {
                 const news = group.representative;
@@ -309,6 +318,7 @@ function App() {
                   <button className="news-card as-button" onClick={() => setSelectedGroup(group)} key={`${group.category}-${index}`}>
                     <div className="news-top"><span>{group.category}</span><em>{String(index + 1).padStart(2, "0")}</em></div>
                     <h4>{news.title}</h4>
+                    <div className="news-meta">{news.source || "뉴스"}{formatNewsDate(news.publishedAt) ? ` · ${formatNewsDate(news.publishedAt)}` : ""}</div>
                     <p>{news.summary}</p>
                     <div className="news-bottom">
                       <div className="chips">{(news.tags || []).map((t) => <span className="chip" key={t}>{t}</span>)}</div>
