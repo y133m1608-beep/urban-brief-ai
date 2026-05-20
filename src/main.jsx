@@ -82,7 +82,7 @@ function App() {
   const [refreshCount, setRefreshCount] = useState(0);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [architectureKeywords, setArchitectureKeywords] = useState(defaultArchitectureKeywords);
-  const [architecturalQuestion, setArchitecturalQuestion] = useState("{architecturalQuestion}");
+  const [architecturalQuestion, setArchitecturalQuestion] = useState("오늘 뉴스 흐름을 바탕으로 건축적 질문을 생성하는 중입니다.");
 
   const keywords = useMemo(() => flattenKeywords(categories), [categories]);
 
@@ -182,7 +182,13 @@ function App() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ email: email.trim(), project, keywords, categories })
       });
-      const data = await response.json();
+      const rawText = await response.text();
+      let data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        throw new Error(rawText || "서버가 JSON이 아닌 응답을 반환했습니다.");
+      }
       if (!response.ok) throw new Error(data.error || "메일 발송에 실패했습니다.");
       if (data.groupedNews) setGroupedNews(data.groupedNews);
       if (data.impacts) setArchitecturalImpacts(data.impacts);

@@ -14,7 +14,6 @@ module.exports = async function handler(req, res) {
     const newsItems = groupedNews.map((group) => group.representative);
     const architectureKeywords = await generateArchitectureKeywords({ newsItems });
     const impacts = await generateArchitecturalImpacts({ newsItems });
-    const architectureKeywords = await generateArchitectureKeywords({ newsItems });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const from = process.env.FROM_EMAIL || "Urban Brief AI <onboarding@resend.dev>";
 
