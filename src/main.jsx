@@ -91,12 +91,12 @@ function App() {
   const commonFlow =
     "오늘의 뉴스는 정책, 경제, 사회, 도시, 환경, 기술, 문화 흐름을 균형 있게 읽기 위해 분야별로 수집되었다. 건축은 이 변화들을 단순한 사건이 아니라 주거, 공공공간, 인프라, 상업공간, 생활 방식의 변화로 번역해야 한다.";
 
-  const impacts = [
-    "건축은 사회 전반의 흐름을 읽고, 이를 공간 프로그램과 도시 구조의 변화로 해석하는 역할을 요구받는다.",
-    "정책·경제·인구·기후·기술 이슈는 건축의 규모, 용도, 운영 방식, 공공성에 직접적인 영향을 준다.",
-    "문화와 생활 방식의 변화는 상업공간, 공공공간, 주거공간의 경험 방식과 체류 방식을 변화시킨다.",
-    "건축 에이전트는 뉴스 자체보다 여러 뉴스가 함께 만들어내는 공간적 요구를 파악하는 데 목적이 있다."
-  ];
+  const [architecturalImpacts, setArchitecturalImpacts] = useState([
+    "오늘 뉴스 흐름을 바탕으로 건축 분야에 미칠 영향을 분석하는 중입니다.",
+    "뉴스가 업데이트되면 이 문장들도 함께 바뀝니다.",
+    "OpenAI API가 있으면 AI 기반 분석을 사용하고, 없으면 규칙 기반 분석으로 대체됩니다.",
+    "각 항목은 오늘의 뉴스 흐름과 건축·도시공간의 연결을 중심으로 생성됩니다."
+  ]);
 
   useEffect(() => {
     localStorage.setItem("urbanBriefCategories", JSON.stringify(categories));
@@ -119,6 +119,7 @@ function App() {
 
       setGroupedNews(data.groupedNews || []);
       if (data.question) setArchitecturalQuestion(data.question);
+      if (data.impacts) setArchitecturalImpacts(data.impacts);
       setUpdatedAt(data.updatedAt || "");
       setRefreshCount((count) => count + 1);
       setStatus("분야별 대표 기사와 관련 기사 목록이 업데이트되었습니다.");
@@ -183,6 +184,7 @@ function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "메일 발송에 실패했습니다.");
       if (data.groupedNews) setGroupedNews(data.groupedNews);
+      if (data.impacts) setArchitecturalImpacts(data.impacts);
       setStatus("메일이 전송되었습니다. 받은 편지함 또는 스팸함을 확인하세요.");
     } catch (error) {
       setStatus(error.message || "메일 발송 중 오류가 발생했습니다.");
@@ -315,7 +317,7 @@ function App() {
 
           <section className="block">
             <h3>3. 건축 분야에 미칠 종합 영향</h3>
-            <div className="impact-grid">{impacts.map((impact, index) => <div className="impact" key={impact}><span>{index + 1}</span><p>{impact}</p></div>)}</div>
+            <div className="impact-grid">{architecturalImpacts.map((impact, index) => <div className="impact" key={impact}><span>{index + 1}</span><p>{impact}</p></div>)}</div>
           </section>
 
           <section className="block">

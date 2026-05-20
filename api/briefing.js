@@ -30,6 +30,33 @@ const architectureWords = [
   "교통", "관광", "인구", "고령", "부동산", "재난", "AI", "기술"
 ];
 
+
+function normalizeDuplicateKey(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/https?:\/\/(www\.)?/g, "")
+    .replace(/[?#].*$/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+}
+
+function getArticleDuplicateKeys(article = {}) {
+  const urlKey = normalizeDuplicateKey(article.url || article.naverUrl || "");
+  const titleKey = normalizeDuplicateKey(article.title || "");
+  return [urlKey, titleKey].filter(Boolean);
+}
+
+function isDuplicateArticle(article = {}, globalSeen = new Set()) {
+  const keys = getArticleDuplicateKeys(article);
+  return keys.some((key) => globalSeen.has(key));
+}
+
+function rememberArticle(article = {}, globalSeen = new Set()) {
+  const keys = getArticleDuplicateKeys(article);
+  keys.forEach((key) => globalSeen.add(key));
+}
+
 function stripHtml(value = "") {
   return String(value)
     .replace(/<[^>]*>/g, "")
@@ -146,14 +173,31 @@ async function fetchArticlesForCategory({ category, limit = 5, refresh = "" } = 
 async function fetchNewsByCategory({ categories = defaultCategories, perCategory = 5, refresh = "" } = {}) {
   const selected = Array.isArray(categories) && categories.length ? categories : defaultCategories;
   const grouped = [];
+  const globalSeen = new Set();
 
   for (const category of selected.slice(0, 7)) {
-    const articles = await fetchArticlesForCategory({ category, limit: perCategory, refresh });
+    const rawArticles = await fetchArticlesForCategory({ category, limit: perCategory + 8, refresh });
+
+    const uniqueArticles = [];
+    for (const article of rawArticles) {
+      if (isDuplicateArticle(article, globalSeen)) continue;
+      rememberArticle(article, globalSeen);
+      uniqueArticles.push(article);
+      if (uniqueArticles.length >= perCategory) break;
+    }
+
+    const fallback = getFallbackArticle(category);
+    const representative = uniqueArticles[0] || fallback;
+
+    if (!uniqueArticles.length && !isDuplicateArticle(fallback, globalSeen)) {
+      rememberArticle(fallback, globalSeen);
+    }
+
     grouped.push({
       category: category.name,
       keywords: category.keywords || [],
-      representative: articles[0] || getFallbackArticle(category),
-      articles: articles.length ? articles : [getFallbackArticle(category)]
+      representative,
+      articles: uniqueArticles.length ? uniqueArticles : [fallback]
     });
   }
 
@@ -344,6 +388,119 @@ ${JSON.stringify(compactNews, null, 2)}
 }
 
 
+
+function createFallbackImpacts(newsItems = []) {
+  const text = newsItems.map((item) => `${item.category} ${item.keyword || ""} ${item.title} ${item.summary}`).join(" ");
+
+  if (text.includes("기후") || text.includes("폭염") || text.includes("재난") || text.includes("침수")) {
+    return [
+      "오늘 뉴스는 기후위기와 재난 대응이 건축의 부가 조건이 아니라 기본 성능이 되고 있음을 보여준다.",
+      "건축은 실내 공간만이 아니라 그늘, 배수, 피난, 냉방, 반외부공간을 포함한 생활 안전 인프라로 계획될 필요가 있다.",
+      "공공공간과 보행환경은 미관 중심의 외부공간이 아니라 폭염·침수·재난 상황에서 일상을 유지하게 하는 도시 장치로 다뤄져야 한다.",
+      "향후 설계에서는 에너지 효율뿐 아니라 기후 리스크를 흡수하는 공간 구조와 운영 방식이 함께 요구될 가능성이 크다."
+    ];
+  }
+
+  if (text.includes("고령") || text.includes("1인가구") || text.includes("저출산") || text.includes("인구") || text.includes("돌봄")) {
+    return [
+      "오늘 뉴스는 인구구조 변화가 주거 유형과 생활 인프라의 재편을 요구하고 있음을 보여준다.",
+      "건축은 가족 단위 중심의 표준 주거에서 벗어나 1인가구, 고령자, 돌봄 수요를 수용하는 다양한 주거 모델을 고민해야 한다.",
+      "주거와 복지시설은 분리된 프로그램이 아니라 생활권 안에서 연결되는 작은 공공 인프라로 배치될 필요가 있다.",
+      "앞으로 건축의 공공성은 큰 시설을 새로 짓는 방식보다 일상 공간 가까이에 돌봄, 휴식, 교류 기능을 삽입하는 방식으로 강화될 수 있다."
+    ];
+  }
+
+  if (text.includes("상권") || text.includes("시장") || text.includes("소비") || text.includes("관광") || text.includes("지역")) {
+    return [
+      "오늘 뉴스는 지역상권과 소비 방식의 변화가 상업공간의 역할을 다시 정의하고 있음을 보여준다.",
+      "상업공간은 단순 판매 장소가 아니라 체험, 물류, 체류, 지역 정체성이 결합된 복합 프로그램으로 변화할 가능성이 크다.",
+      "전통시장과 노후 상가는 철거 대상이 아니라 기존 상품 흐름과 생활 문화를 재조직할 수 있는 도시 자산으로 해석될 수 있다.",
+      "건축은 지역의 경제 활동을 수용하는 동시에 방문자와 거주자 모두가 머무를 수 있는 공공적 장면을 만들어야 한다."
+    ];
+  }
+
+  if (text.includes("AI") || text.includes("기술") || text.includes("물류") || text.includes("산업")) {
+    return [
+      "오늘 뉴스는 기술과 산업 구조의 변화가 건축의 운영 방식과 공간 구성에 직접 영향을 주고 있음을 보여준다.",
+      "AI, 물류, 자동화 기술은 보이지 않는 시스템이지만, 건축에서는 동선, 저장, 관리, 서비스 공간의 재편으로 나타날 수 있다.",
+      "도시 안의 건축은 사람의 이용뿐 아니라 데이터, 물류, 유지관리 시스템이 함께 작동하는 플랫폼으로 이해될 필요가 있다.",
+      "앞으로 설계에서는 고정된 공간보다 변화하는 기술과 운영 방식에 대응할 수 있는 가변적 공간 구조가 중요해질 수 있다."
+    ];
+  }
+
+  return [
+    "오늘 뉴스는 사회 전반의 변화가 건축의 프로그램과 도시 구조에 영향을 미치고 있음을 보여준다.",
+    "건축은 개별 건물의 형태보다 정책, 경제, 사회, 환경 변화가 만들어내는 공간적 요구를 읽는 역할을 해야 한다.",
+    "주거, 상업, 공공공간, 인프라는 더 이상 분리된 프로그램이 아니라 하나의 생활권 안에서 복합적으로 연결될 가능성이 크다.",
+    "앞으로 건축은 새로운 공간을 만드는 것뿐 아니라 기존 도시 안의 기능들을 어떻게 재조직할 것인지가 중요해질 수 있다."
+  ];
+}
+
+async function generateArchitecturalImpacts({ newsItems = [] } = {}) {
+  const fallback = createFallbackImpacts(newsItems);
+
+  if (!process.env.OPENAI_API_KEY) {
+    return fallback;
+  }
+
+  try {
+    const compactNews = newsItems.slice(0, 7).map((item, index) => ({
+      index: index + 1,
+      category: item.category,
+      keyword: item.keyword,
+      title: item.title,
+      summary: item.summary
+    }));
+
+    const prompt = `
+너는 건축 시사 브리핑 에이전트다.
+아래 오늘의 뉴스들을 종합해서 "건축 분야에 미칠 종합 영향"을 한국어로 4개 작성하라.
+
+조건:
+- 일반론 금지. 오늘 뉴스의 구체적 흐름을 반영할 것.
+- 뉴스 하나씩 분석하지 말고 전체 흐름을 종합할 것.
+- 각 항목은 건축, 도시공간, 주거, 공공공간, 상업공간, 인프라, 프로그램 중 하나 이상과 연결할 것.
+- 각 항목은 1문장으로 작성할 것.
+- 결과는 JSON 배열만 출력할 것. 예: ["문장1", "문장2", "문장3", "문장4"]
+
+뉴스:
+${JSON.stringify(compactNews, null, 2)}
+`;
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        input: prompt
+      })
+    });
+
+    if (!response.ok) return fallback;
+
+    const data = await response.json();
+    const outputText =
+      data.output_text ||
+      (Array.isArray(data.output)
+        ? data.output.flatMap((part) => part.content || []).map((content) => content.text || "").join("")
+        : "");
+
+    const cleaned = String(outputText || "").trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (Array.isArray(parsed) && parsed.length) {
+      return parsed.slice(0, 4).map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    return fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
 module.exports = {
   defaultCategories,
   defaultKeywords,
@@ -355,5 +512,7 @@ module.exports = {
   createBriefingText,
   stripHtml,
   createFallbackQuestion,
-  generateArchitecturalQuestion
+  generateArchitecturalQuestion,
+  createFallbackImpacts,
+  generateArchitecturalImpacts
 };
